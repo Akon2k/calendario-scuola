@@ -1,0 +1,10 @@
+# Credenciales: nunca se suben a git
+config.json
+
+# Salidas, registros y pruebas
+salida/
+debug/
+logs/
+_prueba_salida/
+__pycache__/
+*.pyc

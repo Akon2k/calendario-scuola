@@ -1,0 +1,17 @@
+{
+  "rut": "12345678-9",
+  "password": "TuContraseñaAquí",
+  "supabase": {
+    "url": "https://icblrmookmpmzpnjeeeh.supabase.co",
+    "anon_key": "sb_publishable_2ynkuLM3hPegnHMFswA1_w_x50ZyPJs",
+    "tabla": "ediciones"
+  },
+  "github": {
+    "repo": "calendario-scuola"
+  },
+  "avisos": {
+    "vapid_publica": "generala con: python generar_vapid.py",
+    "vapid_privada": "32 bytes en base64url (sólo en tu config.json real)",
+    "sujetos": "https://edufacil.cl"
+  }
+}
