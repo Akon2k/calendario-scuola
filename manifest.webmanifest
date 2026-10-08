@@ -1,7 +1,7 @@
 {
   "name": "Calendario de Evaluaciones — Scuola Italiana - Prima Elementare",
   "short_name": "Calendario Eva",
-  "description": "Evaluaciones de la Scuola Italiana: el calendario completo y el aviso diario de las 07:00.",
+  "description": "Evaluaciones de la Scuola Italiana: el calendario completo, el resumen de los sábados y los avisos de cambios.",
   "lang": "es",
   "id": "./",
   "start_url": "./",
