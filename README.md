@@ -122,7 +122,6 @@ Lo que puede hacer quien la abre:
 - **Descargar .ics**: baja el calendario para Google Calendar o Outlook web.
 - **Instalar app**: la convierte en una app del celular o de la PC.
 - **Avisos**: da de alta el navegador para recibir notificaciones.
-- **Probar aviso**: manda una notificación de prueba al instante.
 
 El alcance es corregir lo existente y agregar: no hay botón de borrar ni
 ocultar evaluaciones. El nombre que escribe al corregir queda guardado como
@@ -168,8 +167,7 @@ Sáb 2026-10-10  →  "14, 15 y 16 oct · 3 evaluaciones"
 
 El estado de los avisos queda en `logs/avisos_estado.json` y sólo avanza
 cuando el envío sale bien. Para probar todo el circuito sin esperar al
-sábado está `python avisos.py --probar-sabado`, o el botón **Probar aviso**
-en la propia página.
+sábado está `python avisos.py --probar-sabado`.
 
 ## Correcciones de la comunidad (Supabase)
 

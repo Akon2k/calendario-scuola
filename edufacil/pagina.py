@@ -342,9 +342,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
       (<em>Ajustes &#8594; Importar y exportar</em>), Outlook web o el iPhone.</li>
     <li><strong>App y avisos:</strong> instala la app en tu teléfono con los
       pasos de abajo y activa <em>&#128276; Avisos</em>: el sábado llega el
-      resumen y, si alguien corrige o cambia algo, avisa ese mismo día.
-      <em>&#129514; Probar aviso</em> lanza una notificación de ejemplo al
-      momento.</li>
+      resumen y, si alguien corrige o cambia algo, avisa ese mismo día.</li>
   </ul>
   <h3>&#128241; Instalar en el teléfono (para recibir los avisos)</h3>
   <div class="pasos">
@@ -374,9 +372,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
     </div>
   </div>
   <p class="nota">En iPhone los avisos llegan <strong>sólo</strong> desde la app
-    agregada a la pantalla de inicio; en Android, desde Chrome instalada o no.
-    Para comprobar que funciona, toca <em>&#129514; Probar aviso</em> dentro
-    de la app.</p>
+    agregada a la pantalla de inicio; en Android, desde Chrome instalada o no.</p>
 </section>
 
 <footer>
@@ -1338,9 +1334,11 @@ _PLANTILLA = r"""<!DOCTYPE html>
   if (btnAvisos) restaurarAvisos();
 
   // Prueba al instante: la misma notificación del sábado, sin esperar.
+  // «Probar aviso» queda escondido a propósito: el botón existe en el HTML
+  // pero jamás se muestra (el atributo hidden se conserva por si algún día
+  // se quiere reactivar, sin tocar nada más).
   var btnProbar = document.getElementById('probar');
   if (btnProbar) {
-    btnProbar.hidden = !window.Notification;
     btnProbar.addEventListener('click', function () {
       if (!window.Notification) {
         msgAvisos('Este navegador no admite avisos.'); return;

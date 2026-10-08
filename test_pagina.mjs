@@ -341,8 +341,11 @@ if (!porId["avisos-estado"].textContent.includes("no admite"))
   fallo("avisos sin explicación: " + JSON.stringify(porId["avisos-estado"].textContent));
 ok("avisos: " + porId["avisos-estado"].textContent);
 
-// «Probar aviso» oculto sin Notification y explica el motivo al pulsarlo
-if (!porId.probar.hidden) fallo("«Probar aviso» debería estar oculto sin Notification");
+// «Probar aviso» está escondido a propósito: existe, pero jamás se muestra
+if (!/id="probar"[^>]*\shidden/.test(html))
+  fallo("«Probar aviso» debería llevar el atributo hidden en el HTML");
+if (/btnProbar\.hidden\s*=\s*!window\.Notification/.test(html))
+  fallo("«Probar aviso» no debe volver a desocultarse solo");
 porId.probar.click();
 if (!porId["avisos-estado"].textContent.includes("no admite"))
   fallo("probar sin explicación: " + JSON.stringify(porId["avisos-estado"].textContent));
