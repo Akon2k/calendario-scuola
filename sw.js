@@ -3,7 +3,7 @@
      en caché queda como respaldo si no hay red.
    - Iconos y manifest: caché primero.
    - Otros dominios (Supabase): nunca se tocan, van directo a la red.
-   - push: muestra el aviso diario que envía avisos.py a las 07:00. */
+   - push: muestra el aviso que envía avisos.py (sábado o cambios). */
 'use strict';
 const CACHE = 'calendario-v1';
 const ESTATICOS = ['./', './manifest.webmanifest', './icon-192.png',
