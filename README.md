@@ -13,7 +13,7 @@ deja listas en varios lugares a la vez:
 
 Sólo lee tu propio calendario con tus credenciales de EduFácil. Resultado
 real del año 2026: 102 evaluaciones de marzo a diciembre, en 10 asignaturas,
-con profesor, coeficiente y ponderación.
+con profesor, número (y sub-número cuando corresponde) y coeficiente.
 
 La página publicada está en:
 
@@ -108,9 +108,15 @@ que con escribirlo de una forma alcanza.
 
 Al abrirla muestra el mes con las evaluaciones y un panel con el detalle del
 día seleccionado. Cada evaluación se muestra con **un dato por línea**
-(fecha, asignatura, prueba, profesor, tipo, coeficiente y ponderación, sólo
-los que traiga el registro), igual en el resumen del sábado, en Outlook, en
-el `.ics` y en los avisos.
+(fecha, asignatura, prueba, profesor, número —y sub-número si es una
+sub-evaluación— y coeficiente, sólo los que traiga el registro), igual en el
+resumen del sábado, en Outlook, en el `.ics` y en los avisos.
+
+Son los mismos campos que enseñan los diálogos del propio sitio
+(«Detalle de evaluación» y «Detalle de sub-evaluación»): la evaluación trae
+**Número** y la sub-evaluación trae **Número** y **Sub-número**; el nombre
+va sin el `E3:` / `SE2-2:` que trae la lista, y **sin ponderación**, que la
+fuente no la muestra en el detalle.
 
 Lo que puede hacer quien la abre:
 
@@ -154,11 +160,11 @@ El formato del resumen es un dato por línea:
 Sáb 2026-10-10  →  "14, 15 y 16 oct · 3 evaluaciones"
                    Mié 14 oct
                    IDIOMA EXTRANJERO (ITALIANO)
-                   SE4-1: Canción (N° 4.1)
+                   Canción
                    Prof. VALENTINA ANDREA PÉREZ DÍAZ
-                   Sub-evaluación
+                   Número 4
+                   Sub-número 1
                    coef. 1
-                   ponderación 1%
 
                    Jue 15 oct
                    ARTES VISUALES

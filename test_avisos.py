@@ -84,13 +84,15 @@ def main() -> int:
     assert cuerpo.split("\n\n")[0] == (
         "Mié 14 oct\n"
         "LENGUAJE Y COMUNICACIÓN\n"
-        "E6: Prueba escrita (N° 6)\n"
+        "Prueba escrita\n"
         "Prof. MARÍA LÓPEZ\n"
-        "Evaluación\n"
-        "coef. 2\n"
-        "ponderación 40%"), cuerpo
-    assert "Vie 16 oct\nIDIOMA EXTRANJERO (ITALIANO)\nSE2-2: Audio 2 (N° 2.2)" \
+        "Número 6\n"
+        "coef. 2"), cuerpo
+    assert "Vie 16 oct\nIDIOMA EXTRANJERO (ITALIANO)\nAudio 2\n" \
         in cuerpo, cuerpo
+    assert "Número 2\nSub-número 2" in cuerpo, \
+        "la sub-evaluación se lista con Número y Sub-número: " + cuerpo
+    assert "ponderación" not in cuerpo, cuerpo
     assert cuerpo.count("\n\n") == 2, "línea en blanco entre fechas"
     print(" ", resumen["titulo"])
     print("  ", cuerpo.replace("\n\n", " | ").replace("\n", " › "))

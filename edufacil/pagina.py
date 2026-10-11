@@ -330,8 +330,8 @@ _PLANTILLA = r"""<!DOCTYPE html>
     <li><strong>Ver el calendario:</strong> cambia de mes con <em>&#8249; &#8250;</em>,
       <em>Hoy</em> vuelve al día de hoy, <em>Imprimir</em> da una copia en papel.</li>
     <li><strong>Un día:</strong> toca cualquier fecha y se abren sus evaluaciones,
-      cada dato en su propia línea (prueba, profesor, tipo, coeficiente y
-      ponderación).</li>
+      cada dato en su propia línea (prueba, profesor, número, sub-número si
+      la hay, y coeficiente).</li>
     <li><strong>Sábado (&#128218;):</strong> el cuadro muestra el resumen de la
       semana que viene, con una línea en blanco entre cada fecha.</li>
     <li><strong>Corregir o agregar:</strong> en cada evento están
@@ -637,25 +637,40 @@ _PLANTILLA = r"""<!DOCTYPE html>
     return mismoMes ? texto + ' ' + MESES_CORTOS[Number(fechas[0].slice(5, 7))] : texto;
   }
 
+  // Espejo de edufacil/semana.py: mismo formato que la fuente.
+  // El sitio trae «E3:» / «SE2-2:» delante del nombre en la lista, pero sus
+  // diálogos de detalle lo muestran solo.
+  var PREFIJO_NOMBRE = /^(?:E|SE)\d+(?:-\d+)?:\s*/;
+
+  function nombreSolo(nombre) {
+    return String(nombre || '').trim().replace(PREFIJO_NOMBRE, '').trim();
+  }
+
+  // «Número» y, si es sub-evaluación, «Sub-número».
+  function numerosDe(numero, tipo) {
+    var n = String(numero || '').trim();
+    if (!n) return [];
+    if (String(tipo || '').indexOf('Sub') >= 0 && n.indexOf('.') > 0) {
+      var partes = n.split('.');
+      return partes[1] === '' ? ['Número ' + partes[0]]
+                              : ['Número ' + partes[0], 'Sub-número ' + partes[1]];
+    }
+    return ['Número ' + n];
+  }
+
   function filaResumen(fecha, r) {
     // un item, un salto: cada dato en su propia línea
     var lineas = [DIAS_CORTOS[(fecha.getDay() + 6) % 7] + ' ' + fecha.getDate()
                 + ' ' + MESES_CORTOS[fecha.getMonth() + 1]];
     var asignatura = String(r.ASIGNATURA || '').trim();
     if (asignatura) lineas.push(asignatura);
-    var evaluacion = String(r.EVALUACION || '').trim();
-    var numero = String(r.NUMERO || '').trim();
-    if (evaluacion) lineas.push(numero ? evaluacion + ' (N° ' + numero + ')'
-                                       : evaluacion);
+    var evaluacion = nombreSolo(r.EVALUACION);
+    if (evaluacion) lineas.push(evaluacion);
     var profesor = String(r.PROFESOR || '').trim();
     if (profesor) lineas.push('Prof. ' + profesor);
-    var tipo = String(r.TIPO || '').trim();
-    if (tipo) lineas.push(tipo);
+    numerosDe(r.NUMERO, r.TIPO).forEach(function (l) { lineas.push(l); });
     var coef = String(r.COEFICIENTE || '').trim();
     if (coef) lineas.push('coef. ' + coef);
-    var po = String(r.PONDERACION || '').trim();
-    if (po) lineas.push(/%$/.test(po) ? 'ponderación ' + po
-                                      : 'ponderación ' + po + '%');
     return lineas.join('\n');
   }
 
@@ -791,7 +806,8 @@ _PLANTILLA = r"""<!DOCTYPE html>
         var el = document.createElement('div');
         el.className = 'ev';
         el.style.setProperty('--c', D.colores[ev.a] || '#9ca3af');
-        el.title = ev.a + ' — ' + ev.e + (ev.p ? ' · ' + ev.p : '');
+        el.title = ev.a + ' — ' + nombreSolo(ev.e)
+                 + (ev.p ? ' · ' + ev.p : '');
         var b = document.createElement('b');
         b.textContent = ev.ab + (ev.n ? ' ' + ev.n : '');
         el.appendChild(b);
@@ -850,17 +866,15 @@ _PLANTILLA = r"""<!DOCTYPE html>
 
       var tit = document.createElement('div');
       tit.className = 'tit';
-      tit.textContent = ev.e + (ev.n ? ' (N° ' + ev.n + ')' : '');
+      tit.textContent = nombreSolo(ev.e);
 
       var meta = document.createElement('div');
       meta.className = 'meta';
-      // un item, un salto: igual que en el resumen del sábado
+      // un item, un salto: los mismos campos del detalle de la fuente
       var partes = [];
       if (ev.p) partes.push('Prof. ' + ev.p);
-      if (ev.t) partes.push(ev.t);
+      numerosDe(ev.n, ev.t).forEach(function (l) { partes.push(l); });
       if (ev.co) partes.push('coef. ' + ev.co);
-      if (ev.po) partes.push(/%$/.test(ev.po) ? 'ponderación ' + ev.po
-                                              : 'ponderación ' + ev.po + '%');
       meta.textContent = partes.join('\n');
 
       bloque.appendChild(asig);

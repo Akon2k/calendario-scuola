@@ -7,20 +7,27 @@ anterior**, en un único evento con el detalle de la semana completa.
     Sáb 2026-10-10  →  "14, 15 y 16 oct · 3 evaluaciones"
                        Mié 14 oct
                        IDIOMA EXTRANJERO (ITALIANO)
-                       SE4-1: Canción (N° 4.1)
                        Prof. VALENTINA ANDREA PÉREZ DÍAZ
-                       Sub-evaluación
+                       Número 4
+                       Sub-número 1
+                       Canción
                        coef. 1
-                       ponderación 1%
 
                        Jue 15 oct
                        ARTES VISUALES
                        …
 
-Cada evaluación es **un ítem por línea** (fecha, asignatura, prueba,
-profesor, tipo, coeficiente y ponderación — sólo los que traiga el registro)
-y cada fecha se separa de la siguiente por una **línea en blanco**, igual en
-el aviso, en Outlook, en el `.ics` y en la página del calendario.
+Cada evaluación es **un ítem por línea** (fecha, asignatura, profesor,
+número —y sub-número si es una sub-evaluación—, nombre y coeficiente, sólo
+los que traiga el registro) y cada fecha se separa de la siguiente por una
+**línea en blanco**, igual en el aviso, en Outlook, en el `.ics` y en la
+página del calendario.
+
+Son los mismos campos de los diálogos del sitio («Detalle de evaluación» y
+«Detalle de sub-evaluación»): allí la evaluación trae **Número** y la
+sub-evaluación trae **Número** y **Sub-número**, el nombre va sin el
+«E3:»/«SE2-2:» que trae la lista, y **no aparece la ponderación** — que la
+fuente no enseña en el detalle.
 
 Los resumenes usan las mismas columnas que las evaluaciones, así que los
 exportadores no necesitan cambios. Su identidad es la **fecha del sábado**
@@ -30,6 +37,7 @@ semana y no se duplica).
 
 from __future__ import annotations
 
+import re
 from datetime import date, timedelta
 
 MESES_CORTOS = ["", "ene", "feb", "mar", "abr", "may", "jun", "jul", "ago",
@@ -62,30 +70,46 @@ def _etiqueta_fechas(fechas: list[date]) -> str:
     return f"{texto} {MESES_CORTOS[fechas[0].month]}" if mismo_mes else texto
 
 
+# El sitio trae «E3:» / «SE2-2:» delante del nombre en la lista, pero sus
+# diálogos de detalle lo muestran solo: aquí se respeta ese formato.
+PREFIJO = re.compile(r"^(?:E|SE)\d+(?:-\d+)?:\s*")
+
+
+def nombre_solo(nombre) -> str:
+    """Nombre de la prueba sin el «E3:» / «SE2-2:» que trae la lista."""
+    return PREFIJO.sub("", str(nombre or "").strip()).strip()
+
+
+def numeros(registro: dict) -> list[str]:
+    """«Número» y, si es sub-evaluación, «Sub-número» (así los pide la fuente)."""
+    numero = str(registro.get("NUMERO") or "").strip()
+    if not numero:
+        return []
+    if "Sub" in str(registro.get("TIPO") or "") and "." in numero:
+        base, _, sub = numero.partition(".")
+        lineas = [f"Número {base}"]
+        if sub.strip():
+            lineas.append(f"Sub-número {sub.strip()}")
+        return lineas
+    return [f"Número {numero}"]
+
+
 def _fila(fecha: date, registro: dict) -> str:
     """Un item, un salto: cada dato del registro en su propia línea."""
     lineas = [f"{DIAS_CORTOS[fecha.weekday()]} {_corta(fecha)}"]
     asignatura = str(registro.get("ASIGNATURA") or "").strip()
     if asignatura:
         lineas.append(asignatura)
-    evaluacion = str(registro.get("EVALUACION") or "").strip()
-    numero = str(registro.get("NUMERO") or "").strip()
+    evaluacion = nombre_solo(registro.get("EVALUACION"))
     if evaluacion:
-        lineas.append(f"{evaluacion} (N° {numero})" if numero else evaluacion)
+        lineas.append(evaluacion)
     profesor = str(registro.get("PROFESOR") or "").strip()
     if profesor:
         lineas.append(f"Prof. {profesor}")
-    tipo = str(registro.get("TIPO") or "").strip()
-    if tipo:
-        lineas.append(tipo)
+    lineas.extend(numeros(registro))
     coeficiente = str(registro.get("COEFICIENTE") or "").strip()
     if coeficiente:
         lineas.append(f"coef. {coeficiente}")
-    ponderacion = str(registro.get("PONDERACION") or "").strip()
-    if ponderacion:
-        lineas.append(f"ponderación {ponderacion}"
-                      if ponderacion.endswith("%")
-                      else f"ponderación {ponderacion}%")
     return "\n".join(lineas)
 
 
