@@ -341,7 +341,8 @@ salida queda en `logs/avisos_dia.log`.
 `tarea.bat` hace tres cosas, en orden y cortando si la primera falla:
 
 1. exporta los archivos **y sincroniza Outlook** con
-   `python main.py --outlook --outlook-desde 2026-10-01`;
+   `python main.py --outlook`: todo el calendario, sin tope de fecha, para
+   que Outlook quede igual que la página pase lo que pase;
 2. `python publicar.py` → sube la página a GitHub Pages;
 3. `python avisos.py` → envía los avisos pendientes.
 
