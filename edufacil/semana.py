@@ -94,6 +94,45 @@ def numeros(registro: dict) -> list[str]:
     return [f"Número {numero}"]
 
 
+def campos_item(registro: dict, *, con_tipo: bool = False) -> list[str]:
+    """Una evaluación en «un ítem, un salto», como la pinta la página.
+
+    Mismo orden y mismas etiquetas que las tarjetas del detalle: **sin la
+    ponderación** y **sin el «E3:»/«SE2-2:»** que trae la lista. Es el texto
+    que leen quien descargue el `.ics` y quien abra la cita en Outlook, de
+    modo que los dos quedan iguales.
+
+    Va como «Etiqueta: valor» porque Outlook relee esas líneas para
+    reconocer cada cita (ver ``outlook._clave_cita``). ``con_tipo`` agrega
+    «Tipo:», que la página no enseña pero que Outlook necesita para no
+    cruzar una sub-evaluación con su evaluación.
+    """
+    lineas = []
+    for etiqueta, valor in (
+            ("Fecha", registro.get("FECHA")),
+            ("Día", registro.get("DIA")),
+            ("Asignatura", registro.get("ASIGNATURA")),
+            ("Profesor(a)", registro.get("PROFESOR"))):
+        texto = str(valor or "").strip()
+        if texto:
+            lineas.append(f"{etiqueta}: {texto}")
+    for fila in numeros(registro):          # «Número 2» y «Sub-número 2»
+        etiqueta, _, valor = fila.partition(" ")
+        lineas.append(f"{etiqueta}: {valor}")
+    for etiqueta, valor in (
+            ("Nombre", nombre_solo(registro.get("EVALUACION"))),
+            ("Contenido", registro.get("CONTENIDO")),
+            ("Coeficiente", registro.get("COEFICIENTE"))):
+        texto = str(valor or "").strip()
+        if texto:
+            lineas.append(f"{etiqueta}: {texto}")
+    if con_tipo:
+        tipo = str(registro.get("TIPO") or "").strip()
+        if tipo:
+            lineas.append(f"Tipo: {tipo}")
+    return lineas
+
+
 def _fila(fecha: date, registro: dict) -> str:
     """Un item, un salto: cada dato del registro en su propia línea."""
     lineas = [f"{DIAS_CORTOS[fecha.weekday()]} {_corta(fecha)}"]

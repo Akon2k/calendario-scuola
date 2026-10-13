@@ -9,7 +9,7 @@ from pathlib import Path
 
 from edufacil import a_csv, a_excel, a_html, a_json, agregar_detalle, ediciones, limpiar, ordenar
 from edufacil.datos import DIAS_ES, registros_desde_dias
-from edufacil.outlook import _clave
+from edufacil.outlook import _campos_desde_cuerpo, _clave, _clave_desde_campos, _cuerpo
 from edufacil.semana import resumenes_semanales
 
 SUBSECTORES = {
@@ -101,6 +101,19 @@ def main() -> int:
     assert _clave(otro) != clave, "dos evaluaciones distintas no pueden cruzarse"
     print(" claves: estable al cambiar la fecha y única por evaluación")
 
+    # ---- el cuerpo de la cita se relee para reconocerla sin duplicarla ----
+    for registro in exportables + resumenes:
+        cuerpo = _cuerpo(registro)
+        assert _clave_desde_campos(_campos_desde_cuerpo(cuerpo)) == _clave(registro), \
+            f"el cuerpo no permite reconocer {registro['EVALUACION']!r}"
+        assert "Ponderación" not in cuerpo, f"sin ponderación: {cuerpo}"
+    cuerpo_sub = _cuerpo(sub)
+    assert cuerpo_sub.startswith("Fecha: 2026-10-14"), cuerpo_sub
+    assert "Número: 1" in cuerpo_sub and "Sub-número: 1" in cuerpo_sub, cuerpo_sub
+    assert "Nombre: Quizz" in cuerpo_sub, cuerpo_sub
+    assert "Tipo: Sub-evaluación" in cuerpo_sub, cuerpo_sub
+    print(" outlook: el cuerpo se relee y devuelve la misma clave")
+
     csv_texto = (salida / "prueba.csv").read_text(encoding="utf-8-sig")
     assert "MATEMÁTICA" in csv_texto and csv_texto.splitlines()[0].startswith("FECHA;")
     assert "Resumen semanal" not in csv_texto, "el resumen no va al CSV"
@@ -133,6 +146,17 @@ def main() -> int:
     assert ics.startswith("BEGIN:VCALENDAR\r\n"), "las líneas deben ser CRLF"
     assert max(len(l.encode("utf-8")) for l in lineas) <= 75, "falta plegar"
     print(" ics embebido:", len(uids), "eventos, UID únicos, plegado OK")
+
+    # ---- el .ics respeta el formato de la fuente, igual que la página ----
+    abierto = ics.replace("\r\n ", "")      # el plegado parte los pares
+    assert "PONDERACI" not in ics, "el .ics no debe enseñar ponderación"
+    assert "(N°" not in ics, "el .ics ya no lleva «(N° n)»"
+    assert "Sub-número" in ics, "falta el Sub-número de la sub-evaluación"
+    assert ": E2: " not in abierto and ": SE1-1: " not in abierto, \
+        "el nombre va sin el «E2:»/«SE1-1:»"
+    assert "Nombre: Números hasta 100" in abierto, abierto[:400]
+    assert "Nombre: Quizz" in abierto, abierto[:400]
+    print(" ics embebido: formato de la fuente (sin ponderación ni prefijo)")
 
     # ---- PWA: manifest, service worker e iconos junto al HTML ----
     man = json.loads((salida / "manifest.webmanifest").read_text(encoding="utf-8"))

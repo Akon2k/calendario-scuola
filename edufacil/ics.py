@@ -16,7 +16,7 @@ import re
 import unicodedata
 from datetime import date, datetime, timezone
 
-from .semana import TIPO_RESUMEN
+from .semana import TIPO_RESUMEN, campos_item, nombre_solo
 
 
 def _escapar(valor) -> str:
@@ -78,14 +78,14 @@ def _buscar_fecha(registro: dict) -> date | None:
 
 
 def _titulo(registro: dict) -> str:
+    """Título del evento, igual que el de la página: la asignatura y el
+    nombre **sin el «E3:»/«SE2-2:»** que trae la lista y sin el «(N° 3)»
+    que la fuente no enseña en su detalle."""
     asignatura = str(registro.get("ASIGNATURA") or "").strip()
-    evaluacion = str(registro.get("EVALUACION") or "").strip()
-    numero = str(registro.get("NUMERO") or "").strip()
+    evaluacion = nombre_solo(registro.get("EVALUACION"))
     if asignatura and evaluacion:
-        base = f"{asignatura}: {evaluacion}"
-    else:
-        base = asignatura or evaluacion or "Evaluación"
-    return f"{base} (N° {numero})" if numero else base
+        return f"{asignatura}: {evaluacion}"
+    return asignatura or evaluacion or "Evaluación"
 
 
 def _uid(registro: dict, fecha: date) -> str:
@@ -119,9 +119,7 @@ def texto_ics(registros: list[dict], recordatorio_min: int | None = 1440) -> str
         if not fecha:
             continue
         titulo = _titulo(registro)
-        descripcion = "\n".join(
-            f"{clave}: {valor}" for clave, valor in registro.items() if valor
-        )
+        descripcion = "\n".join(campos_item(registro))
         lineas += [
             "BEGIN:VEVENT",
             f"UID:{_uid(registro, fecha)}",

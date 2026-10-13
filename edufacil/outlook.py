@@ -28,7 +28,7 @@ import re
 import unicodedata
 from datetime import date, datetime, timedelta
 
-from .semana import TIPO_RESUMEN
+from .semana import TIPO_RESUMEN, campos_item, nombre_solo
 
 OL_FOLDER_CALENDAR = 9     # olFolderCalendar (también en Folders.Add)
 OL_APPOINTMENT = 1         # olAppointmentItem
@@ -127,20 +127,31 @@ def _campos_desde_cuerpo(cuerpo: str) -> dict[str, str]:
     return campos
 
 
-def _clave_cita(item) -> str:
-    """Clave de una cita ya existente, leída de su propio cuerpo."""
-    campos = _campos_desde_cuerpo(getattr(item, "Body", "") or "")
+def _clave_desde_campos(campos: dict[str, str]) -> str:
+    """Identidad leída de las líneas «Etiqueta: valor» de un cuerpo.
+
+    El cuerpo escribe «Número» y «Sub-número» por separado, igual que los
+    diálogos de la fuente, pero la identidad sigue siendo el «2.2» crudo
+    del registro: aquí se vuelven a juntar para que la misma cita no se
+    duplique.
+    """
     tipo = campos.get("TIPO", "")
     if tipo.upper() == TIPO_RESUMEN.upper():
         return f"SEMANA|{campos.get('FECHA', '')}"
     asignatura = campos.get("ASIGNATURA", "")
     if not asignatura:
         return ""
-    return "|".join([
-        asignatura.upper(),
-        campos.get("NUMERO", ""),
-        tipo.upper(),
-    ])
+    numero = campos.get("NUMERO", "")
+    sub = campos.get("SUBNUMERO", "")
+    if sub and "." not in numero:
+        numero = f"{numero}.{sub}"
+    return "|".join([asignatura.upper(), numero, tipo.upper()])
+
+
+def _clave_cita(item) -> str:
+    """Clave de una cita ya existente, leída de su propio cuerpo."""
+    return _clave_desde_campos(
+        _campos_desde_cuerpo(getattr(item, "Body", "") or ""))
 
 
 def _existe_en(carpeta) -> tuple[dict, dict]:
@@ -185,31 +196,24 @@ def _tomar(indice: dict, clave: str, fecha: date):
 # Creación y actualización
 # --------------------------------------------------------------------------
 def _asunto(registro: dict) -> str:
+    """Título de la cita, igual que el de la página: la asignatura y el
+    nombre **sin el «E3:»/«SE2-2:»** que trae la lista y sin el «(N° 3)»
+    que la fuente no enseña en su detalle."""
     asignatura = str(registro.get("ASIGNATURA") or "").strip()
-    evaluacion = str(registro.get("EVALUACION") or "").strip()
-    numero = str(registro.get("NUMERO") or "").strip()
-    base = f"{asignatura}: {evaluacion}" if asignatura and evaluacion else (
-        asignatura or evaluacion or "Evaluación"
-    )
-    return f"{base} (N° {numero})" if numero else base
+    evaluacion = nombre_solo(registro.get("EVALUACION"))
+    if asignatura and evaluacion:
+        return f"{asignatura}: {evaluacion}"
+    return asignatura or evaluacion or "Evaluación"
 
 
 def _cuerpo(registro: dict) -> str:
-    etiquetas = [
-        ("Fecha", "FECHA"), ("Día", "DIA"), ("Asignatura", "ASIGNATURA"),
-        ("Profesor(a)", "PROFESOR"), ("Número", "NUMERO"),
-        ("Tipo", "TIPO"), ("Coeficiente", "COEFICIENTE"),
-        ("Ponderación", "PONDERACION"), ("Contenido", "CONTENIDO"),
-    ]
-    lineas = []
-    for etiqueta, clave in etiquetas:
-        valor = registro.get(clave)
-        if valor:
-            lineas.append(f"{etiqueta}: {str(valor)}".replace("\r\n", "\n")
-                                                              .replace("\n", "\r\n"))
+    """El cuerpo de la cita: los mismos campos, en el mismo orden y con las
+    mismas etiquetas que el `.ics` que se descarga de la página."""
+    lineas = campos_item(registro, con_tipo=True)
     lineas.append("")
     lineas.append("Descargado de EduFácil por CalendarioEvaScuola")
-    return "\r\n".join(lineas)
+    return "\r\n".join(linea.replace("\r\n", "\n").replace("\n", "\r\n")
+                       for linea in lineas)
 
 
 def _mismo_cuerpo(guardado: str, nuevo: str) -> bool:
