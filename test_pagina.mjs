@@ -49,7 +49,8 @@ for (const id of ["datos", "ics-b64", "nube", "mes-actual", "rejilla", "detalle"
                   "instalar", "avisos", "probar", "avisos-estado",
                   "pestanas", "tab-calendario", "tab-mensajes",
                   "cuenta-mensajes", "vista-calendario", "mensajes",
-                  "mensajes-lista"]) {
+                  "mensajes-lista", "impresion-mes", "impresion-actividades",
+                  "clima", "clima-icono", "clima-temperatura", "clima-ciudad", "clima-ubicacion", "clima-hora"]) {
   const el = new Elem("div");
   el.id = id;
   porId[id] = el;
@@ -71,7 +72,15 @@ globalThis.document = {
   createTextNode: (t) => ({ nodeValue: t }),
   body: new Elem("body"),
 };
-globalThis.window = { print: () => {} };
+let impresiones = 0;
+const eventosVentana = {};
+const intervalos = [];
+globalThis.window = {
+  print: () => { impresiones++; },
+  addEventListener: (tipo, fn) => { (eventosVentana[tipo] ||= []).push(fn); },
+  setInterval: (fn, demora) => { intervalos.push({ fn, demora }); return intervalos.length; },
+};
+const eventoVentana = tipo => (eventosVentana[tipo] || []).forEach(fn => fn());
 globalThis.URL = {
   createObjectURL: (blob) => { descargado = blob; return "blob:falsa"; },
   revokeObjectURL: () => {},
@@ -93,7 +102,32 @@ const comunicadosSim = [
 ];
 const consultasMensajes = [];
 let errorMensajes = false;
+let respuestaClima = { current: { temperature_2m: 14.6, weather_code: 3, is_day: 1, time: '2026-10-16T19:00' },
+  current_units: { temperature_2m: '°C' } };
+let errorClima = false;
+let permisoUbicacion = true, consultasUbicacion = 0;
+Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { geolocation: {
+  getCurrentPosition: (exito, error, opciones) => {
+    consultasUbicacion++;
+    if (opciones.enableHighAccuracy !== false) throw new Error('no necesita GPS de alta precisión');
+    if (!permisoUbicacion) { error({ code: 1 }); return; }
+    exito({ coords: { latitude: -33.047238, longitude: -71.612688 } });
+  }
+} } });
+const consultasClima = [];
+const consultasNombreLugar = [];
+let errorNombreLugar = false;
 globalThis.fetch = async (url, opts = {}) => {
+  if (String(url).startsWith('https://api.bigdatacloud.net/')) {
+    consultasNombreLugar.push({ url, opts });
+    if (errorNombreLugar) throw new Error('no disponible');
+    return { ok: true, json: async () => ({ city: 'Valparaíso' }) };
+  }
+  if (String(url).startsWith('https://api.open-meteo.com/')) {
+    consultasClima.push({ url, opts });
+    if (errorClima) throw new Error('sin conexión');
+    return { ok: true, json: async () => respuestaClima };
+  }
   // cada tabla tiene su propio simulacro
   const comu = String(url).indexOf("/comunicados") >= 0;
   const lista = comu ? comunicadosSim : filasSim;
@@ -130,6 +164,94 @@ await new Promise((r) => setTimeout(r, 30));   // la carga de la nube es async
 
 const fallo = (msg) => { console.error("FALLO: " + msg); process.exit(1); };
 const ok = (msg) => console.log("  ok  " + msg);
+
+if (!html.includes('<h1>Calendario de Evaluaciones - Prima Elementare</h1>')
+    || !/class="logo" src="data:image\/jpeg;base64,[^"]+"/.test(html))
+  fallo('faltan el nuevo título o el logo incrustado');
+const subtitulo = (html.match(/<p class="sub">([\s\S]*?)<\/p>/) || [])[1] || '';
+if (!/del \d{2}\/\d{2}\/\d{4} al \d{2}\/\d{2}\/\d{4}/.test(subtitulo)
+    || !/generado \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}/.test(subtitulo)
+    || /EduFácil|Scuola|Prima/.test(subtitulo))
+  fallo('el subtítulo debe contener sólo rango chileno y fecha de generación');
+ok('cabecera: Prima Elementare, logo y fechas dd/mm/aaaa sin el texto anterior');
+
+if (porId['clima-temperatura'].textContent !== '15 °C' || porId['clima-icono'].textContent !== '☁️'
+    || !porId.clima.title.includes('Nublado'))
+  fallo('el widget no mostró la temperatura y el estado del clima');
+if (consultasUbicacion !== 0) fallo('no debe pedir ubicación al abrir la página');
+if (consultasNombreLugar.length || porId['clima-ciudad'].textContent !== 'Mi ubicación')
+  fallo('al principio debe decir Mi ubicación y no buscar una ciudad sin permiso');
+if (!consultasClima.every(c => !c.opts.headers && c.url.includes('latitude=-36.83')
+    && c.url.includes('longitude=-73.05') && c.url.includes('timezone=auto')))
+  fallo('el clima debe consultar Concepción sin credenciales de Supabase');
+errorClima = true;
+await window.__calendario.recargarClima();
+if (porId['clima-temperatura'].textContent !== 'Sin datos')
+  fallo('sin conexión el clima no debe inventar datos ni conservarlos como actuales');
+errorClima = false;
+const climaValido = respuestaClima;
+respuestaClima = { current: { temperature_2m: '15' } };
+await window.__calendario.recargarClima();
+if (porId['clima-temperatura'].textContent !== 'Sin datos') fallo('aceptó datos meteorológicos inválidos');
+respuestaClima = { ...climaValido, current: { ...climaValido.current, weather_code: 0, is_day: 0 } };
+await window.__calendario.recargarClima();
+if (porId['clima-icono'].textContent !== '🌙') fallo('de noche no debe mostrar el sol');
+respuestaClima = climaValido;
+await window.__calendario.recargarClima();
+porId['clima-ubicacion'].click();
+await new Promise(r => setTimeout(r, 0));
+if (consultasUbicacion !== 1 || porId['clima-ciudad'].textContent !== 'Valparaíso'
+    || !consultasClima.at(-1).url.includes('latitude=-33.05&longitude=-71.61')
+    || porId['clima-ubicacion'].disabled)
+  fallo('con permiso debe usar coordenadas aproximadas y restablecer el botón');
+if (consultasNombreLugar.length !== 1 || consultasNombreLugar[0].opts.headers
+    || !consultasNombreLugar[0].url.includes('latitude=-33.05&longitude=-71.61'))
+  fallo('el nombre debe consultarse con coordenadas aproximadas, sin claves del calendario');
+await window.__calendario.recargarClima();
+if (!consultasClima.at(-1).url.includes('latitude=-33.05&longitude=-71.61'))
+  fallo('las actualizaciones deben conservar la ubicación elegida durante la sesión');
+permisoUbicacion = false;
+porId['clima-ubicacion'].click();
+await new Promise(r => setTimeout(r, 0));
+if (porId['clima-ciudad'].textContent !== 'Mi ubicación' || porId['clima-ubicacion'].disabled
+    || !consultasClima.at(-1).url.includes('latitude=-36.83&longitude=-73.05'))
+  fallo('sin permiso debe volver a Concepción sin bloquear la página');
+if (consultasNombreLugar.length !== 1) fallo('sin permiso no debe consultar el nombre de una ubicación');
+permisoUbicacion = true;
+errorNombreLugar = true;
+porId['clima-ubicacion'].click();
+await new Promise(r => setTimeout(r, 0));
+if (porId['clima-ciudad'].textContent !== 'Zona actual' || porId['clima-temperatura'].textContent !== '15 °C'
+    || !porId['clima-ubicacion'].title.includes('No se pudo obtener el nombre'))
+  fallo('si falla el nombre debe conservar el clima local sin inventar una ciudad');
+if (!html.includes('--verde: #008837') || !html.includes('background: var(--verde)'))
+  fallo('los botones principales deben usar el verde del logo');
+ok('clima: Mi ubicación antes del permiso, ciudad real después y fallo seguro sin inventar nombres');
+
+if (!/^\d{2}:\d{2}$/.test(porId['clima-hora'].textContent) || !porId['clima-hora'].dateTime)
+  fallo('el widget debe mostrar la hora local en formato de 24 horas');
+const consultasAntesDelReloj = consultasClima.length + consultasNombreLugar.length;
+const intervaloReloj = intervalos.find(i => i.demora === 1000);
+if (!intervaloReloj) fallo('falta la actualización automática del reloj');
+const FechaReal = globalThis.Date;
+try {
+  const instante = new FechaReal(2026, 9, 16, 23, 59, 59);
+  globalThis.Date = class extends FechaReal { constructor(...args) { super(...(args.length ? args : [instante])); } };
+  intervaloReloj.fn();
+  if (porId['clima-hora'].textContent !== '23:59') fallo('el reloj no usa la hora local del dispositivo');
+  instante.setSeconds(60);
+  intervaloReloj.fn();
+  if (porId['clima-hora'].textContent !== '00:00') fallo('el reloj no cambió correctamente al siguiente día');
+} finally { globalThis.Date = FechaReal; }
+eventoVentana('focus');
+if (consultasClima.length + consultasNombreLugar.length !== consultasAntesDelReloj)
+  fallo('actualizar la hora no debe consultar servicios ni pedir ubicación');
+ok('reloj junto al clima: hora local de 24 horas, cambio de día y actualización sin solicitudes de red');
+const estiloWidget = (html.match(/#clima\s*\{[^}]*}/) || [])[0] || '';
+const estiloHora = (html.match(/#clima \.hora\s*\{[^}]*}/) || [])[0] || '';
+if (!/display:\s*grid/.test(estiloWidget) || !/grid-template-columns:/.test(estiloWidget)
+    || !/grid-column:\s*2/.test(estiloHora))
+  fallo('el widget debe ser horizontal, con clima a la izquierda y hora a la derecha');
 
 // la sección de instrucciones existe y el pie no nombra la carpeta de Outlook
 if (!/id="ayuda"/.test(html) || !html.includes("Instrucciones de uso"))
@@ -289,6 +411,46 @@ if (porId["mes-actual"].textContent !== "Octubre 2026")
   fallo("hoy: " + porId["mes-actual"].textContent);
 ok("navegación: sig/anter/hoy");
 
+// Imprimir: sólo el mes visible, con actividades completas y sin resúmenes duplicados.
+const textoImpresion = el => (el.textContent || '') + (el.children || []).map(textoImpresion).join(' ');
+if (porId['impresion-actividades'].children.length)
+  fallo('la lista de impresión no debe prepararse al abrir la página');
+if (!/#impresion-mes, #impresion-actividades\s*\{\s*display:\s*none/.test(html))
+  fallo('la lista de impresión debe estar oculta en la vista normal');
+porId.imprimir.click();
+if (impresiones !== 1 || porId['impresion-mes'].textContent !== 'Octubre 2026')
+  fallo('Imprimir no preparó el mes actual o no abrió la impresión');
+const diasImpresos = porId['impresion-actividades'].children.slice(1);
+const actividadesImpresas = diasImpresos.flatMap(d => d.children[1].children);
+if (actividadesImpresas.length !== oct.length)
+  fallo('la lista impresa no coincide con las actividades reales de octubre');
+for (const ev of oct) {
+  const dia = diasImpresos.find(d => d.children[0].textContent === ev.f.split('-').reverse().join('/'));
+  const item = dia && dia.children[1].children.find(i =>
+    i.children[0].textContent === ev.a + ' — ' + nombreDe(ev)
+    && (!ev.p || textoImpresion(i).includes(ev.p))
+    && (!ev.c || textoImpresion(i).includes(ev.c)));
+  if (!item || (ev.p && !textoImpresion(item).includes(ev.p))
+      || (ev.c && !textoImpresion(item).includes(ev.c)))
+    fallo('la impresión perdió el nombre, profesor o contenido de una actividad');
+}
+if (!diasImpresos.every(d => /^\d{2}\/10\/2026$/.test(d.children[0].textContent)))
+  fallo('las fechas de impresión deben usar formato chileno');
+eventoVentana('afterprint');
+if (porId['impresion-actividades'].children.length || porId['impresion-mes'].textContent)
+  fallo('al cerrar/cancelar la impresión debe limpiar la lista auxiliar');
+porId.siguiente.click();
+eventoVentana('beforeprint');
+if (porId['impresion-mes'].textContent !== 'Noviembre 2026')
+  fallo('beforeprint debe preparar el mes que se está viendo');
+porId.siguiente.click(); porId.siguiente.click();
+eventoVentana('beforeprint');
+if (!textoImpresion(porId['impresion-actividades']).includes('Sin actividades registradas'))
+  fallo('el mes vacío debe informarlo sin arrastrar actividades del mes anterior');
+eventoVentana('afterprint');
+porId.hoy.click();
+ok('imprimir: calendario del mes y lista por fecha, sin cambiar la pantalla y con limpieza al cancelar');
+
 // 5) leyenda
 const nAsignaturas = new Set(Object.keys(datos.colores).map(a =>
   a.trim().replace(/\s+/g, ' ').toUpperCase())).size;
@@ -297,12 +459,12 @@ if (!porId.leyenda.children.length
   fallo("leyenda: " + porId.leyenda.children.length + " de " + nAsignaturas);
 ok("leyenda: " + nAsignaturas + " asignaturas");
 const reglaLeyenda = (html.match(/#leyenda\s*{[^}]*}/) || [])[0] || "";
-if (!/justify-content:\s*flex-start/.test(reglaLeyenda))
-  fallo("la leyenda debe quedar compacta: " + reglaLeyenda);
+if (!/justify-content:\s*center/.test(reglaLeyenda))
+  fallo("la leyenda debe quedar centrada: " + reglaLeyenda);
 const nombresLeyenda = porId.leyenda.children.map(el => el.children[1].nodeValue);
 if (!nombresLeyenda.includes("Lenguaje") || nombresLeyenda.includes("LENGUAJE Y COMUNICACIÓN"))
   fallo("la leyenda debe usar nombres cortos: " + nombresLeyenda);
-ok("leyenda compacta, nombres cortos y sin duplicados");
+ok("leyenda centrada y compacta, nombres cortos y sin duplicados");
 
 // 6) descarga del .ics
 porId.descargar.click();
@@ -397,6 +559,11 @@ const chip = barra && barra.children.find((c) => c.className === "corregido");
 if (!chip || !chip.textContent.includes("María"))
   fallo("chip de autor: " + (chip ? chip.textContent : "(no está)"));
 ok("corrección remota aplicada y firmada por " + chip.textContent.replace("✎ ", ""));
+eventoVentana('beforeprint');
+if (!textoImpresion(porId['impresion-actividades']).includes('Corregida por otra persona')
+    || !textoImpresion(porId['impresion-actividades']).includes('Prueba agregada por la página'))
+  fallo('la impresión debe incluir las correcciones y actividades nuevas de la nube');
+eventoVentana('afterprint');
 
 const btnDeshacer = barra.children.find((c) => (c.textContent || "").includes("deshacer"));
 if (!btnDeshacer) fallo("falta el botón de deshacer");
@@ -477,6 +644,11 @@ if (!porId["avisos-estado"].textContent.includes("Instalar"))
 ok("instalar: " + porId["avisos-estado"].textContent);
 
 // ---- pestañas: calendario y mensajes de la Scuola ----
+if (!html.includes('id="tab-calendario" class="activa"><svg class="icono"')
+    || html.includes('&#128197; Calendario</button>'))
+  fallo('Calendario debe usar un ícono simple, sin emoji de color');
+if (!html.includes('id="tab-mensajes" hidden>&#9993;&#65038; Mensajes'))
+  fallo('Mensajes debe usar un sobre normal, sin emoji de correo entrante');
 if (/<p class="desde">/.test(html))
   fallo('Mensajes no debe mostrar la leyenda del inicio del período');
 const todoTexto = (el) => (el.textContent || "")

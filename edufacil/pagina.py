@@ -42,7 +42,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Calendario de Evaluaciones — Scuola Italiana - Prima Elementare</title>
+<title>Calendario de Evaluaciones - Prima Elementare</title>
 <meta name="theme-color" content="#2563eb">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -55,7 +55,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
     --borde: #e5e7eb;
     --texto: #111827;
     --suave: #6b7280;
-    --azul: #2563eb;
+    --verde: #008837;
   }
   * { box-sizing: border-box; }
   body {
@@ -72,16 +72,42 @@ _PLANTILLA = r"""<!DOCTYPE html>
     align-items: center; justify-content: space-between;
   }
   h1 { margin: 0; font-size: 22px; letter-spacing: -.02em; }
+  .marca { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
+  .marca .logo { width: 76px; height: 55px; object-fit: contain;
+                 border-radius: 8px; flex-shrink: 0; }
+  .identidad { min-width: 0; }
   .sub { margin: 4px 0 0; color: var(--suave); font-size: 13px; }
-  .acciones { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .sub span { display: inline-block; }
+  .acciones { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; flex-basis: 100%; }
+  #clima {
+    flex: 0 0 220px; align-self: flex-start; padding: 6px 10px;
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px;
+    text-align: center; background: #fff; border: 1px solid var(--borde);
+    border-radius: 10px; line-height: 1.3;
+  }
+  #clima .ciudad { display: block; font-size: 11px; color: var(--suave); }
+  #clima .actual { grid-column: 1; display: block; margin: 2px 0; font-size: 18px; font-weight: 600; }
+  #clima .hora {
+    grid-column: 2; grid-row: 1 / 4; display: flex; align-items: center; gap: 5px;
+    margin: 0; padding-left: 10px; border-left: 1px solid var(--borde);
+    font-size: 20px; color: #006b2b; white-space: nowrap; font-variant-numeric: tabular-nums;
+  }
+  #clima a { grid-column: 1; color: var(--suave); font-size: 9px; text-decoration: none; }
+  #clima a:hover { text-decoration: underline; }
+  #clima-ubicacion {
+    grid-column: 1; display: block; width: 100%; margin: 0; min-height: 26px;
+    padding: 3px 2px; font-size: 10px; white-space: normal; overflow-wrap: anywhere;
+  }
   button {
     font: inherit; padding: 7px 13px; border-radius: 8px;
-    border: 1px solid var(--borde); background: #fff; color: var(--texto);
+    border: 1px solid #b7d8bf; background: #fff; color: #006b2b;
     cursor: pointer;
   }
-  button:hover { background: #f9fafb; border-color: #d1d5db; }
-  button.primario { background: var(--azul); border-color: var(--azul); color: #fff; }
-  button.primario:hover { background: #1d4ed8; }
+  button:hover { background: #eef8f0; border-color: #9acfa9; }
+  button.primario { background: var(--verde); border-color: var(--verde); color: #fff; }
+  button.primario:hover { background: #006b2b; }
+  button:focus-visible { outline: 2px solid var(--verde); outline-offset: 2px; }
+  button:disabled { cursor: wait; opacity: .7; }
   #mes-actual { font-weight: 600; min-width: 132px; text-align: center; }
   #vistas { max-width: 1180px; margin: 12px auto 0; position: relative; }
   main {
@@ -106,13 +132,13 @@ _PLANTILLA = r"""<!DOCTYPE html>
     min-height: 104px; padding: 6px; border: 1px solid var(--borde);
     border-radius: 9px; background: #fff; cursor: pointer; overflow: hidden;
   }
-  .celda:hover { border-color: #93c5fd; }
+  .celda:hover { border-color: #9acfa9; }
   .celda.vacio { background: #fafafa; border-color: #f1f1f1; cursor: default; }
   .celda.sabado, .celda.domingo { background: #f9fafb; }
-  .celda.hoy { box-shadow: inset 0 0 0 2px var(--azul); }
-  .celda.elegida { background: #eff6ff; border-color: #93c5fd; }
+  .celda.hoy { box-shadow: inset 0 0 0 2px var(--verde); }
+  .celda.elegida { background: #eef8f0; border-color: #9acfa9; }
   .numero { font-size: 13px; font-weight: 600; color: var(--suave); }
-  .celda.hoy .numero { color: var(--azul); }
+  .celda.hoy .numero { color: var(--verde); }
   .ev {
     margin-top: 4px; padding: 2px 6px; font-size: 11.5px; line-height: 1.35;
     border-left: 3px solid var(--c, #9ca3af); background: #fff;
@@ -144,7 +170,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
     max-width: 1180px; margin: 12px auto 0; padding: 8px 12px;
     background: #fff; border: 1px solid var(--borde); border-radius: 12px;
     display: flex; flex-wrap: wrap; gap: 5px 14px; align-items: center;
-    justify-content: flex-start;
+    justify-content: center;
     font-size: 12px;
   }
   .punto { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
@@ -192,16 +218,18 @@ _PLANTILLA = r"""<!DOCTYPE html>
     flex: 1; padding: 11px 12px; font-size: 14.5px; font-weight: 600;
     border-radius: 10px; background: #fff;
   }
-  #pestanas button.activa { background: #eff6ff; border-color: #93c5fd;
-                            color: #1d4ed8; }
-  #pestanas button.activa:hover { background: #dbeafe; }
+  #pestanas button.activa { background: #eef8f0; border-color: #9acfa9;
+                            color: #006b2b; }
+  #pestanas button.activa:hover { background: #def0e3; }
   #pestanas .cuenta {
     font-size: 11.5px; font-weight: 700; margin-left: 7px;
-    background: #ede9fe; color: #5b21b6; border-radius: 999px; padding: 1px 8px;
+    background: #def0e3; color: #006b2b; border-radius: 999px; padding: 1px 8px;
   }
-  #pestanas button.activa .cuenta { background: #fff; color: #5b21b6; }
+  #pestanas button.activa .cuenta { background: #fff; color: #006b2b; }
+  #pestanas .icono { width: 16px; height: 16px; vertical-align: -2px; }
   /* El calendario reserva su tamaño: mensajes ocupa exactamente ese espacio. */
   main[hidden] { display: grid; visibility: hidden; pointer-events: none; }
+  #impresion-mes, #impresion-actividades { display: none; }
   @media (max-width: 980px) {
     main { grid-template-columns: 1fr; gap: 12px; }
     /* la semana y la rejilla comparten el mismo scroll horizontal */
@@ -253,6 +281,11 @@ _PLANTILLA = r"""<!DOCTYPE html>
     }
     header { padding: 14px 0 8px; gap: 8px; align-items: flex-start; }
     h1 { font-size: 19px; }
+    .marca { gap: 10px; flex-basis: 100%; }
+    .marca .logo { width: 60px; height: 43px; }
+    #clima { flex-basis: 200px; margin-left: auto; padding: 5px 8px; }
+    #clima .actual { font-size: 16px; }
+    #clima .hora { font-size: 18px; }
     .sub { font-size: 12px; }
     .acciones { width: 100%; gap: 6px; }
     button {
@@ -297,20 +330,55 @@ _PLANTILLA = r"""<!DOCTYPE html>
     footer { font-size: 12px; line-height: 1.45; }
   }
   @media print {
-    body { background: #fff; padding: 0; }
-    .acciones, aside { display: none; }
-    main { display: block; }
-    .tarjeta { border: none; }
-    .celda { min-height: 92px; }
+    @page { size: A4 portrait; margin: 12mm; }
+    body { background: #fff; padding: 0; font-size: 10pt; }
+    header { padding: 0 0 8px; }
+    h1 { font-size: 16pt; }
+    .sub { font-size: 9pt; }
+    .acciones, aside, #clima, #pestanas, #mensajes, #modal, #leyenda, #ayuda, footer {
+      display: none !important;
+    }
+    #impresion-mes { display: block; margin: 4px 0 8px; font-size: 14pt; }
+    #vistas { margin: 0; break-inside: avoid; }
+    main, main[hidden] { display: block; visibility: visible; }
+    .tarjeta { border: none; background: #fff; }
+    .scroll { overflow: visible; }
+    .rejilla, .dias-semana { min-width: 0; gap: 4px; padding-left: 0; padding-right: 0; }
+    .celda { min-height: 62px; padding: 4px; }
+    .celda.hoy { box-shadow: none; }
+    .celda.elegida { background: #fff; border-color: var(--borde); }
+    .numero { font-size: 9pt; }
+    .ev { font-size: 7.5pt; }
+    #impresion-actividades { display: block; margin-top: 16px; }
+    #impresion-actividades h2 { margin: 0 0 10px; font-size: 13pt; }
+    .impresion-dia h3 { margin: 10px 0 5px; font-size: 10pt; break-after: avoid; }
+    .impresion-dia ul { margin: 0; padding-left: 18px; }
+    .impresion-item { margin: 0 0 8px; break-inside: avoid; overflow-wrap: anywhere; }
+    .impresion-item .meta { font-size: 9pt; white-space: pre-wrap; }
   }
 </style>
 </head>
 <body>
 
 <header>
-  <div>
-    <h1>Calendario de Evaluaciones</h1>
-    <p class="sub">EduFácil · Scuola Italiana - Prima Elementare · {{RANGO}} · generado {{GENERADO}}</p>
+  <div class="marca">
+    <img class="logo" src="data:image/jpeg;base64,{{LOGO}}" width="152" height="109"
+         alt="Logo de la Scuola Italiana">
+    <div class="identidad">
+      <h1>Calendario de Evaluaciones - Prima Elementare</h1>
+      <p class="sub"><span>{{RANGO}}</span> <span>· generado {{GENERADO}}</span></p>
+    </div>
+  </div>
+  <div id="clima" role="status" aria-live="polite" title="Clima actual de Concepción">
+    <button id="clima-ubicacion" type="button"
+      title="Usar mi ubicación con permiso; Open-Meteo y BigDataCloud reciben coordenadas aproximadas">
+      <span class="ciudad" id="clima-ciudad">Mi ubicación</span>
+    </button>
+    <span class="actual"><span id="clima-icono" aria-hidden="true">&#127777;</span>
+      <span id="clima-temperatura">— °C</span></span>
+    <span class="hora" aria-live="off">
+      <time id="clima-hora" title="Hora local de este dispositivo">--:--</time></span>
+    <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a>
   </div>
   <div class="acciones">
     <button id="anterior" title="Mes anterior">&#8249;</button>
@@ -329,11 +397,15 @@ _PLANTILLA = r"""<!DOCTYPE html>
 </header>
 
 <nav id="pestanas">
-  <button id="tab-calendario" class="activa">&#128197; Calendario</button>
-  <button id="tab-mensajes" hidden>&#128231; Mensajes<span class="cuenta"
+  <button id="tab-calendario" class="activa"><svg class="icono" aria-hidden="true"
+    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+    stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18"
+    height="16" rx="2"/><path d="M7 3v4M17 3v4M3 11h18"/></svg> Calendario</button>
+  <button id="tab-mensajes" hidden>&#9993;&#65038; Mensajes<span class="cuenta"
     id="cuenta-mensajes"></span></button>
 </nav>
 
+<h2 id="impresion-mes"></h2>
 <div id="vistas">
 <main id="vista-calendario">
   <section class="tarjeta">
@@ -353,6 +425,8 @@ _PLANTILLA = r"""<!DOCTYPE html>
   <div id="mensajes-lista"></div>
 </section>
 </div>
+
+<section id="impresion-actividades" aria-label="Actividades del mes para imprimir"></section>
 
 <div id="modal" hidden>
   <div class="panel-modal">
@@ -376,7 +450,8 @@ _PLANTILLA = r"""<!DOCTYPE html>
   <h2>&#128214; Instrucciones de uso</h2>
   <ul>
     <li><strong>Ver el calendario:</strong> cambia de mes con <em>&#8249; &#8250;</em>,
-      <em>Hoy</em> vuelve al día de hoy, <em>Imprimir</em> da una copia en papel.</li>
+      <em>Hoy</em> vuelve al día de hoy, <em>Imprimir</em> da una copia del mes
+      con sus actividades listadas debajo (sólo en la impresión).</li>
     <li><strong>Un día:</strong> toca cualquier fecha y se abren sus evaluaciones,
       cada dato en su propia línea (prueba, profesor, número, sub-número si
       la hay, y coeficiente).</li>
@@ -1035,7 +1110,63 @@ _PLANTILLA = r"""<!DOCTYPE html>
     anio = Number(p[0]); mes = Number(p[1]) - 1; elegida = base;
     pintarMes(); pintarDetalle();
   });
+  function prepararImpresion() {
+    var titulo = document.getElementById('impresion-mes');
+    var caja = document.getElementById('impresion-actividades');
+    titulo.textContent = MESES[mes] + ' ' + anio;
+    caja.innerHTML = '';
+    var encabezado = document.createElement('h2');
+    encabezado.textContent = 'Actividades del mes';
+    caja.appendChild(encabezado);
+    var prefijo = anio + '-' + String(mes + 1).padStart(2, '0') + '-';
+    var fechas = Object.keys(porDia).filter(function (f) {
+      return f.indexOf(prefijo) === 0;
+    }).sort();
+    if (!fechas.length) {
+      var vacio = document.createElement('p');
+      vacio.textContent = 'Sin actividades registradas para este mes.';
+      caja.appendChild(vacio);
+    }
+    fechas.forEach(function (f) {
+      var dia = document.createElement('section');
+      dia.className = 'impresion-dia';
+      var fecha = document.createElement('h3');
+      fecha.textContent = f.split('-').reverse().join('/');
+      dia.appendChild(fecha);
+      var lista = document.createElement('ul');
+      (porDia[f] || []).forEach(function (ev) {
+        var item = document.createElement('li');
+        item.className = 'impresion-item';
+        var nombre = document.createElement('strong');
+        nombre.textContent = ev.a + ' — ' + nombreSolo(ev.e);
+        item.appendChild(nombre);
+        var lineas = [];
+        if (ev.p) lineas.push('Prof. ' + ev.p);
+        numerosDe(ev.n, ev.t).forEach(function (l) { lineas.push(l); });
+        if (ev.co) lineas.push('coef. ' + ev.co);
+        if (ev.c) lineas.push(ev.c);
+        if (lineas.length) {
+          var detalle = document.createElement('div');
+          detalle.className = 'meta';
+          detalle.textContent = lineas.join('\n');
+          item.appendChild(detalle);
+        }
+        lista.appendChild(item);
+      });
+      dia.appendChild(lista);
+      caja.appendChild(dia);
+    });
+  }
+
+  function limpiarImpresion() {
+    document.getElementById('impresion-mes').textContent = '';
+    document.getElementById('impresion-actividades').innerHTML = '';
+  }
+
+  window.addEventListener('beforeprint', prepararImpresion);
+  window.addEventListener('afterprint', limpiarImpresion);
   document.getElementById('imprimir').addEventListener('click', function () {
+    prepararImpresion();
     window.print();
   });
   document.getElementById('descargar').addEventListener('click', function () {
@@ -1650,6 +1781,131 @@ _PLANTILLA = r"""<!DOCTYPE html>
       .catch(function () {});      // un fallo no borra los mensajes ya visibles
   }
 
+  function actualizarHoraClima() {
+    var reloj = document.getElementById('clima-hora');
+    var ahora = new Date();
+    var hora = String(ahora.getHours()).padStart(2, '0') + ':' +
+               String(ahora.getMinutes()).padStart(2, '0');
+    if (reloj && reloj.textContent !== hora) {
+      reloj.textContent = hora;
+      reloj.dateTime = ahora.toISOString();
+    }
+  }
+
+  // La ubicación sólo se pide al pulsar el botón. No se guarda en disco ni Supabase.
+  var lugarClima = { latitud: -36.83, longitud: -73.05, nombre: 'Concepción' };
+  var versionClima = 0;
+  function estadoDelClima(codigo, esDia) {
+    if (codigo === 0) return [esDia ? '☀️' : '🌙', 'Despejado'];
+    if (codigo === 1 || codigo === 2) return [esDia ? '🌤️' : '☁️', 'Parcialmente nublado'];
+    if (codigo === 3) return ['☁️', 'Nublado'];
+    if (codigo === 45 || codigo === 48) return ['🌫️', 'Niebla'];
+    if ([51, 53, 55, 56, 57].indexOf(codigo) >= 0) return ['🌦️', 'Llovizna'];
+    if ([61, 63, 65, 66, 67, 80, 81, 82].indexOf(codigo) >= 0) return ['🌧️', 'Lluvia'];
+    if ([71, 73, 75, 77, 85, 86].indexOf(codigo) >= 0) return ['🌨️', 'Nieve'];
+    if ([95, 96, 99].indexOf(codigo) >= 0) return ['⛈️', 'Tormenta'];
+    return ['🌡️', 'Tiempo actual'];
+  }
+
+  function cargarClima() {
+    var widget = document.getElementById('clima');
+    if (!widget) return;
+    var version = ++versionClima;
+    var lugar = lugarClima;
+    document.getElementById('clima-ciudad').textContent = lugar.propia ? lugar.nombre : 'Mi ubicación';
+    document.getElementById('clima-temperatura').textContent = '— °C';
+    document.getElementById('clima-icono').textContent = '🌡️';
+    var control = new AbortController();
+    var tiempo = setTimeout(function () { control.abort(); }, 8000);
+    return fetch('https://api.open-meteo.com/v1/forecast?latitude=' + lugar.latitud + '&longitude=' + lugar.longitud +
+          '&current=temperature_2m,weather_code,is_day&timezone=auto',
+          {signal: control.signal})
+      .then(function (r) {
+        if (!r.ok) throw new Error('clima no disponible');
+        return r.json();
+      })
+      .then(function (datos) {
+        if (version !== versionClima) return;
+        var actual = datos && datos.current;
+        if (!actual || typeof actual.temperature_2m !== 'number' || !isFinite(actual.temperature_2m)
+            || actual.temperature_2m < -100 || actual.temperature_2m > 70
+            || !Number.isInteger(actual.weather_code) || [0, 1].indexOf(actual.is_day) < 0
+            || !datos.current_units || datos.current_units.temperature_2m !== '°C') {
+          throw new Error('datos de clima no válidos');
+        }
+        var estado = estadoDelClima(actual.weather_code, actual.is_day === 1);
+        document.getElementById('clima-icono').textContent = estado[0];
+        document.getElementById('clima-temperatura').textContent = Math.round(actual.temperature_2m) + ' °C';
+        widget.title = lugar.nombre + ' · ' + estado[1] +
+          (typeof actual.time === 'string' ? ' · ' + actual.time.slice(11, 16) + ' (hora local)' : '');
+      })
+      .catch(function () {
+        if (version !== versionClima) return;
+        document.getElementById('clima-icono').textContent = '🌡️';
+        document.getElementById('clima-temperatura').textContent = 'Sin datos';
+        widget.title = 'Clima de ' + lugar.nombre + ' no disponible; se reintentará al actualizar.';
+      })
+      .then(function () { clearTimeout(tiempo); });
+  }
+
+  function nombreUbicacionClima(lugar) {
+    var control = new AbortController();
+    var tiempo = setTimeout(function () { control.abort(); }, 4000);
+    // Sólo tras permiso; la consulta se hace desde el navegador, sin guardar coordenadas.
+    return fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=' +
+          lugar.latitud + '&longitude=' + lugar.longitud + '&localityLanguage=es',
+          {signal: control.signal})
+      .then(function (r) {
+        if (!r.ok) throw new Error('nombre de ubicación no disponible');
+        return r.json();
+      })
+      .then(function (datos) {
+        var nombre = datos && [datos.city, datos.locality, datos.principalSubdivision].find(function (n) {
+          return typeof n === 'string' && n.trim();
+        });
+        return nombre ? nombre.trim().slice(0, 60) : '';
+      })
+      .catch(function () { return ''; })
+      .then(function (nombre) { clearTimeout(tiempo); return nombre; });
+  }
+
+  function usarUbicacionClima() {
+    var boton = document.getElementById('clima-ubicacion');
+    boton.disabled = true;
+    document.getElementById('clima-ciudad').textContent = 'Buscando…';
+    return new Promise(function (resolver) {
+      function terminar(motivo) {
+        boton.disabled = false;
+        document.getElementById('clima-ciudad').textContent = lugarClima.propia ? lugarClima.nombre : 'Mi ubicación';
+        boton.title = motivo;
+        resolver(cargarClima());
+      }
+      function sinUbicacion() {
+        lugarClima = { latitud: -36.83, longitud: -73.05, nombre: 'Concepción' };
+        terminar('No se pudo obtener permiso o ubicación. Se muestra Concepción. Puedes intentarlo otra vez.');
+      }
+      if (typeof navigator === 'undefined' || !navigator.geolocation) { sinUbicacion(); return; }
+      try {
+        navigator.geolocation.getCurrentPosition(function (posicion) {
+          var lat = posicion.coords.latitude, lon = posicion.coords.longitude;
+          if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+            sinUbicacion(); return;
+          }
+          // Aproximadamente un kilómetro: el clima no necesita una posición exacta.
+          lugarClima = { latitud: Math.round(lat * 100) / 100,
+            longitud: Math.round(lon * 100) / 100, nombre: 'Zona actual', propia: true };
+          nombreUbicacionClima(lugarClima).then(function (nombre) {
+            lugarClima.nombre = nombre || 'Zona actual';
+            terminar(nombre ? 'Clima de ' + nombre + '. Ubicación aproximada; no se guarda en el calendario.' :
+              'No se pudo obtener el nombre de la ciudad. Se muestra el clima de tu ubicación aproximada.');
+          });
+        }, sinUbicacion, { enableHighAccuracy: false, timeout: 10000, maximumAge: 1800000 });
+      } catch (e) { sinUbicacion(); }
+    });
+  }
+
+  document.getElementById('clima-ubicacion').addEventListener('click', usarUbicacionClima);
+
   // ---- pestañas: calendario y mensajes ----
   var vistaActiva = 'calendario';
   function pestana(nombre) {
@@ -1681,6 +1937,15 @@ _PLANTILLA = r"""<!DOCTYPE html>
   reconstruir();
   repintar();
   if (NUBE) { cargarFilas(); cargarMensajes(); }
+  cargarClima();
+  actualizarHoraClima();
+  window.addEventListener('focus', actualizarHoraClima);
+  window.setInterval(function () {
+    if (document.visibilityState !== 'hidden') actualizarHoraClima();
+  }, 1000);
+  window.setInterval(function () {
+    if (document.visibilityState !== 'hidden') cargarClima();
+  }, 30 * 60 * 1000);
 
   // gancho para pruebas (y para mirar el estado desde la consola)
   window.__calendario = {
@@ -1695,6 +1960,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
     filas: function () { return filasNube; },
     mensajes: pintarMensajes,
     recargarMensajes: cargarMensajes,
+    recargarClima: cargarClima,
     recargar: cargarFilas
   };
 })();
@@ -1714,6 +1980,20 @@ def _colores(eventos: list[dict]) -> dict[str, str]:
 def _asegurar(ruta: Path) -> Path:
     ruta.parent.mkdir(parents=True, exist_ok=True)
     return ruta
+
+
+def _logo_base64() -> str:
+    """Logo incrustado para conservar el HTML autocontenido y sin rutas locales."""
+    ruta = Path(__file__).resolve().parent / "web" / "logo.jpeg"
+    return base64.b64encode(ruta.read_bytes()).decode("ascii")
+
+
+def _rango_fechas(desde: str, hasta: str) -> str:
+    if not desde or not hasta:
+        return "sin fechas"
+    inicio = datetime.strptime(desde, "%Y-%m-%d").strftime("%d/%m/%Y")
+    fin = datetime.strptime(hasta, "%Y-%m-%d").strftime("%d/%m/%Y")
+    return f"del {inicio} al {fin}"
 
 
 def a_html(registros: list[dict], ruta: Path,
@@ -1796,12 +2076,13 @@ def a_html(registros: list[dict], ruta: Path,
     ics = texto_ics(registros, recordatorio_min=recordatorio_min)
     ics_b64 = base64.b64encode(ics.encode("utf-8")).decode("ascii")
 
-    rango = f"del {desde} al {hasta}" if fechas else "sin fechas"
+    rango = _rango_fechas(desde, hasta)
     html = (
         _PLANTILLA
         .replace("{{DATOS}}", json_texto)
         .replace("{{ICS}}", ics_b64)
         .replace("{{NUBE}}", nube_json)
+        .replace("{{LOGO}}", _logo_base64())
         .replace("{{RANGO}}", rango)
         .replace("{{GENERADO}}", datetime.now().strftime("%d/%m/%Y %H:%M"))
     )

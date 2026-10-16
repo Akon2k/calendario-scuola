@@ -9,6 +9,12 @@ from pathlib import Path
 
 import requests
 
+for _salida in (sys.stdout, sys.stderr):
+    try:
+        _salida.reconfigure(errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
 BASE = Path(__file__).parent
 cfg = json.loads((BASE / "config.json").read_text(encoding="utf-8"))["supabase"]
 url, key = cfg["url"].rstrip("/"), cfg["anon_key"]
@@ -57,26 +63,27 @@ def main() -> int:
         return 1
     fila = alta.json()[0]
 
-    # ---- 3. la corrida de las 07:00 debe reflejarlo en los archivos ----
-    codigo, texto = correr("--formatos", "html,json")
-    assert codigo == 0, texto
-    linea = [l for l in texto.splitlines() if "Correcciones: " in l]
-    print("  ", linea[0] if linea else "(sin línea de correcciones)")
-    assert "1 corrección" in texto, texto
-    json_salida = json.loads(
-        (BASE / "salida" / "calendario_evaluaciones.json")
-        .read_text("utf-8"))["registros"]
-    objetivo = [r for r in json_salida if r["FECHA"] == fecha
-                and r["ASIGNATURA"] == ev["a"] and r["NUMERO"] == ev["n"]]
-    assert objetivo and objetivo[0]["PROFESOR"] == nuevo, objetivo
-    assert nuevo in principal("calendario_evaluaciones.html")
-    print("  ok  la corrección aparece en el JSON y en la página")
-
-    # ---- 4. deshacer (registro «anula») y comprobar que vuelve ----
-    anula = requests.post(API, headers=CAB, timeout=30, json={
-        "tipo": "anula", "clave": clave, "anula": fila["id"],
-        "campos": {}, "previo": {}, "autor": "prueba en vivo", "token": "e2e"})
-    print("POST anula     ->", anula.status_code)
+    try:
+        # ---- 3. la corrida de las 07:00 debe reflejarlo en los archivos ----
+        codigo, texto = correr("--formatos", "html,json")
+        assert codigo == 0, texto
+        linea = [l for l in texto.splitlines() if "Correcciones: " in l]
+        print("  ", linea[0] if linea else "(sin línea de correcciones)")
+        assert "1 corrección" in texto, texto
+        json_salida = json.loads(
+            (BASE / "salida" / "calendario_evaluaciones.json")
+            .read_text("utf-8"))["registros"]
+        objetivo = [r for r in json_salida if r["FECHA"] == fecha
+                    and r["ASIGNATURA"] == ev["a"] and r["NUMERO"] == ev["n"]]
+        assert objetivo and objetivo[0]["PROFESOR"] == nuevo, objetivo
+        assert nuevo in principal("calendario_evaluaciones.html")
+        print("  ok  la corrección aparece en el JSON y en la página")
+    finally:
+        # ---- 4. deshacer (registro «anula») y comprobar que vuelve ----
+        anula = requests.post(API, headers=CAB, timeout=30, json={
+            "tipo": "anula", "clave": clave, "anula": fila["id"],
+            "campos": {}, "previo": {}, "autor": "prueba en vivo", "token": "e2e"})
+        print("POST anula     ->", anula.status_code)
     if anula.status_code not in (200, 201):
         print(anula.text[:400])
         return 1

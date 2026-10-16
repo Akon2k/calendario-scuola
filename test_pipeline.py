@@ -123,6 +123,13 @@ def main() -> int:
     ruta_html = a_html(exportables + resumenes, salida / "prueba.html")
     print(" html:", ruta_html)
     pagina = ruta_html.read_text(encoding="utf-8")
+    assert "<h1>Calendario de Evaluaciones - Prima Elementare</h1>" in pagina
+    logo = re.search(r'class="logo" src="data:image/jpeg;base64,([^"]+)"', pagina)
+    assert logo and base64.b64decode(logo.group(1)).startswith(b"\xff\xd8"), "falta el logo JPEG incrustado"
+    subtitulo = re.search(r'<p class="sub">(.*?)</p>', pagina).group(1)
+    assert "del 10/10/2026 al 14/10/2026" in subtitulo, subtitulo
+    assert "generado " in subtitulo and "EduFácil" not in subtitulo and "Scuola" not in subtitulo
+    assert "{{" not in pagina, "quedaron marcadores sin reemplazar"
     assert "MATEMÁTICA" in pagina, "faltan los datos en la página"
     assert "Descargar .ics" in pagina, "falta el botón de descarga"
     assert "2 evaluaciones" in pagina, "falta el resumen del sábado en la página"
