@@ -477,6 +477,8 @@ if (!porId["avisos-estado"].textContent.includes("Instalar"))
 ok("instalar: " + porId["avisos-estado"].textContent);
 
 // ---- pestañas: calendario y mensajes de la Scuola ----
+if (/<p class="desde">/.test(html))
+  fallo('Mensajes no debe mostrar la leyenda del inicio del período');
 const todoTexto = (el) => (el.textContent || "")
   + (el.children || []).map(todoTexto).join(" ");
 

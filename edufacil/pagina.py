@@ -173,7 +173,6 @@ _PLANTILLA = r"""<!DOCTYPE html>
     background: #fff; border: 1px solid var(--borde); border-radius: 12px;
   }
   #mensajes h2 { margin: 0 0 6px; font-size: 13.5px; color: #111827; }
-  #mensajes .desde { margin: 0 0 6px; font-size: 12px; color: var(--suave); }
   .mensaje { border-top: 1px solid var(--borde); padding: 9px 0 7px; }
   .mensaje.cabecera { border-top: 0; }
   .mensaje .cab { display: flex; flex-wrap: wrap; gap: 4px 10px;
@@ -351,7 +350,6 @@ _PLANTILLA = r"""<!DOCTYPE html>
 </main>
 
 <section id="mensajes" hidden>
-  <p class="desde">Comunicados desde el 1 de septiembre de 2026</p>
   <div id="mensajes-lista"></div>
 </section>
 </div>
