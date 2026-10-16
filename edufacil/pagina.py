@@ -83,6 +83,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
   button.primario { background: var(--azul); border-color: var(--azul); color: #fff; }
   button.primario:hover { background: #1d4ed8; }
   #mes-actual { font-weight: 600; min-width: 132px; text-align: center; }
+  #vistas { max-width: 1180px; margin: 12px auto 0; position: relative; }
   main {
     max-width: 1180px; margin: 0 auto;
     display: grid; grid-template-columns: 1fr 320px; gap: 16px;
@@ -140,15 +141,14 @@ _PLANTILLA = r"""<!DOCTYPE html>
     font: inherit; color: #4c1d95;
   }
   #leyenda {
-    max-width: 1180px; margin: 18px auto 0; padding: 12px 14px;
+    max-width: 1180px; margin: 12px auto 0; padding: 8px 12px;
     background: #fff; border: 1px solid var(--borde); border-radius: 12px;
-    display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
-    /* space-between: cada fila llena el cuadro de borde a borde */
-    justify-content: space-between;
-    font-size: 13px;
+    display: flex; flex-wrap: wrap; gap: 5px 14px; align-items: center;
+    justify-content: flex-start;
+    font-size: 12px;
   }
-  .punto { display: inline-flex; align-items: center; gap: 6px; }
-  .punto i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+  .punto { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .punto i { width: 8px; height: 8px; border-radius: 3px; display: inline-block; }
   footer {
     max-width: 1180px; margin: 16px auto 0; color: var(--suave); font-size: 12.5px;
   }
@@ -166,6 +166,43 @@ _PLANTILLA = r"""<!DOCTYPE html>
   #ayuda .pasos ol { margin: 4px 0 6px; padding-left: 18px; }
   #ayuda .pasos li { margin: 2px 0; }
   #ayuda .nota { margin: 6px 0 0; }
+  /* ---------- comunicados de la Scuola ---------- */
+  #mensajes {
+    position: absolute; inset: 0; margin: 0; padding: 10px 14px 12px;
+    overflow-y: auto; scrollbar-gutter: stable; overflow-wrap: anywhere;
+    background: #fff; border: 1px solid var(--borde); border-radius: 12px;
+  }
+  #mensajes h2 { margin: 0 0 6px; font-size: 13.5px; color: #111827; }
+  #mensajes .desde { margin: 0 0 6px; font-size: 12px; color: var(--suave); }
+  .mensaje { border-top: 1px solid var(--borde); padding: 9px 0 7px; }
+  .mensaje.cabecera { border-top: 0; }
+  .mensaje .cab { display: flex; flex-wrap: wrap; gap: 4px 10px;
+                  align-items: baseline; }
+  .mensaje .asunto { font-weight: 600; font-size: 13.5px; color: #111827; }
+  .mensaje .cuando { font-size: 12px; color: var(--suave); }
+  .mensaje .puntos { margin: 5px 0 0; padding-left: 18px; font-size: 12.5px;
+                     color: #374151; }
+  .mensaje .puntos li { margin: 2px 0; }
+  .mensaje .accion { margin: 6px 0 0; font-size: 12.5px; color: #92400e;
+                     background: #fffbeb; border: 1px solid #fde68a;
+                     border-radius: 8px; padding: 5px 8px; }
+  .mensaje .evento { margin: 5px 0 0; font-size: 12.5px; color: #1e40af; }
+  /* ---------- pestañas: calendario / mensajes ---------- */
+  #pestanas { max-width: 1180px; margin: 14px auto 0; display: flex; gap: 8px; }
+  #pestanas button {
+    flex: 1; padding: 11px 12px; font-size: 14.5px; font-weight: 600;
+    border-radius: 10px; background: #fff;
+  }
+  #pestanas button.activa { background: #eff6ff; border-color: #93c5fd;
+                            color: #1d4ed8; }
+  #pestanas button.activa:hover { background: #dbeafe; }
+  #pestanas .cuenta {
+    font-size: 11.5px; font-weight: 700; margin-left: 7px;
+    background: #ede9fe; color: #5b21b6; border-radius: 999px; padding: 1px 8px;
+  }
+  #pestanas button.activa .cuenta { background: #fff; color: #5b21b6; }
+  /* El calendario reserva su tamaño: mensajes ocupa exactamente ese espacio. */
+  main[hidden] { display: grid; visibility: hidden; pointer-events: none; }
   @media (max-width: 980px) {
     main { grid-template-columns: 1fr; gap: 12px; }
     /* la semana y la rejilla comparten el mismo scroll horizontal */
@@ -255,7 +292,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
     }
     .pie-modal button { flex: 1; min-height: 44px; }
 
-    #leyenda { font-size: 12px; padding: 10px 12px; gap: 8px 12px; margin-top: 12px; }
+    #leyenda { font-size: 11.5px; padding: 8px 10px; gap: 4px 12px; margin-top: 10px; }
     #ayuda { font-size: 12px; }
     #ayuda .pasos { grid-template-columns: 1fr; }
     footer { font-size: 12px; line-height: 1.45; }
@@ -292,7 +329,14 @@ _PLANTILLA = r"""<!DOCTYPE html>
   </div>
 </header>
 
-<main>
+<nav id="pestanas">
+  <button id="tab-calendario" class="activa">&#128197; Calendario</button>
+  <button id="tab-mensajes" hidden>&#128231; Mensajes<span class="cuenta"
+    id="cuenta-mensajes"></span></button>
+</nav>
+
+<div id="vistas">
+<main id="vista-calendario">
   <section class="tarjeta">
     <div class="scroll">
       <div class="dias-semana">
@@ -305,6 +349,12 @@ _PLANTILLA = r"""<!DOCTYPE html>
 
   <aside class="tarjeta" id="detalle"></aside>
 </main>
+
+<section id="mensajes" hidden>
+  <p class="desde">Comunicados desde el 1 de septiembre de 2026</p>
+  <div id="mensajes-lista"></div>
+</section>
+</div>
 
 <div id="modal" hidden>
   <div class="panel-modal">
@@ -720,10 +770,12 @@ _PLANTILLA = r"""<!DOCTYPE html>
     var vistos = {};
     eventos.forEach(function (ev) { if (ev.a) vistos[ev.a] = true; });
     var paleta = D.paleta || [];
-    var salida = {};
+    var salida = {}, porNombre = {};
     Object.keys(vistos).sort().forEach(function (a, i) {
-      salida[a] = (D.colores && D.colores[a]) ||
-                  (paleta.length ? paleta[i % paleta.length] : '#9ca3af');
+      var nombre = nombreAsignatura(a);
+      salida[a] = porNombre[nombre] || (D.colores && D.colores[a]) ||
+                   (paleta.length ? paleta[i % paleta.length] : '#9ca3af');
+      porNombre[nombre] = salida[a];
     });
     return salida;
   }
@@ -938,16 +990,37 @@ _PLANTILLA = r"""<!DOCTYPE html>
     return barra;
   }
 
+  function nombreAsignatura(asig) {
+    return String(asig).trim().replace(/\s+/g, ' ').toUpperCase();
+  }
+
   function pintarLeyenda() {
     var leyenda = document.getElementById('leyenda');
     leyenda.innerHTML = '';
+    var vistos = {};
+    var cortos = {
+      'ARTES VISUALES': 'Artes',
+      'CIENCIAS NATURALES': 'Ciencias',
+      'EDUCACIÓN FÍSICA Y SALUD': 'Ed. física',
+      'HISTORIA, GEOGRAFÍA Y CIENCIAS SOCIALES': 'Historia',
+      'IDIOMA EXTRANJERO (INGLÉS)': 'Inglés',
+      'IDIOMA EXTRANJERO (ITALIANO)': 'Italiano',
+      'LENGUAJE Y COMUNICACIÓN': 'Lenguaje',
+      'MATEMÁTICA': 'Matemática',
+      'MÚSICA': 'Música',
+      'TECNOLOGÍA': 'Tecnología'
+    };
     Object.keys(D.colores).sort().forEach(function (asig) {
+      var nombre = nombreAsignatura(asig);
+      if (vistos[nombre]) return;
+      vistos[nombre] = true;
       var span = document.createElement('span');
       span.className = 'punto';
+      span.title = asig;
       var i = document.createElement('i');
       i.style.background = D.colores[asig];
       span.appendChild(i);
-      span.appendChild(document.createTextNode(asig));
+      span.appendChild(document.createTextNode(cortos[nombre] || asig));
       leyenda.appendChild(span);
     });
   }
@@ -1475,9 +1548,141 @@ _PLANTILLA = r"""<!DOCTYPE html>
       });
   }
 
+  // ---- comunicados generales, desde el 1 de septiembre de 2026 en Chile ----
+  var MENSAJES_DESDE = new Date('2026-09-01T00:00:00-04:00');
+  function fechaLarga(iso) {
+    var f = new Date(iso);
+    if (isNaN(f.getTime())) return '';
+    return DIAS[f.getDay()] + ' ' + f.getDate() + ' de '
+         + MESES[f.getMonth()].toLowerCase();
+  }
+
+  function pintarMensajes(filas) {
+    var seccion = document.getElementById('mensajes');
+    var lista = document.getElementById('mensajes-lista');
+    if (!seccion || !lista) return;
+    var hasta = Date.now();
+    filas = (Array.isArray(filas) ? filas : []).filter(function (m) {
+      var fecha = new Date(m.fecha).getTime();
+      return fecha >= MENSAJES_DESDE.getTime() && fecha <= hasta;
+    });
+    lista.innerHTML = '';
+    if (!filas.length) {
+      document.getElementById('tab-mensajes').hidden = true;
+      document.getElementById('cuenta-mensajes').textContent = '0';
+      pestana('calendario');
+      return;
+    }
+    filas.forEach(function (m, i) {
+      var caja = document.createElement('article');
+      caja.className = 'mensaje' + (i === 0 ? ' cabecera' : '');
+
+      var cab = document.createElement('div');
+      cab.className = 'cab';
+      var asunto = document.createElement('span');
+      asunto.className = 'asunto';
+      asunto.textContent = m.asunto || 'Comunicado';
+      cab.appendChild(asunto);
+      var cuando = document.createElement('span');
+      cuando.className = 'cuando';
+      cuando.textContent = fechaLarga(m.fecha);
+      cab.appendChild(cuando);
+      caja.appendChild(cab);
+
+      var puntos = Array.isArray(m.puntos) ? m.puntos : [];
+      if (puntos.length) {
+        var ul = document.createElement('ul');
+        ul.className = 'puntos';
+        puntos.forEach(function (p) {
+          var li = document.createElement('li');
+          li.textContent = p;
+          ul.appendChild(li);
+        });
+        caja.appendChild(ul);
+      }
+
+      (Array.isArray(m.eventos) ? m.eventos : []).forEach(function (e) {
+        var linea = document.createElement('p');
+        linea.className = 'evento';
+        linea.textContent = (e.fecha_inicio || '').slice(0, 10)
+                          + ' · ' + (e.titulo || '');
+        caja.appendChild(linea);
+      });
+
+      if (m.accion) {
+        var accion = document.createElement('p');
+        accion.className = 'accion';
+        accion.textContent = 'Acción: ' + m.accion;
+        caja.appendChild(accion);
+      }
+
+      lista.appendChild(caja);
+    });
+    var pestana2 = document.getElementById('tab-mensajes');
+    if (pestana2) {
+      pestana2.hidden = false;
+      var cuenta = document.getElementById('cuenta-mensajes');
+      if (cuenta) cuenta.textContent = String(filas.length);
+    }
+    pestana(typeof location !== 'undefined' && location.hash === '#mensajes'
+            ? 'mensajes' : vistaActiva);
+  }
+
+  function cargarMensajes() {
+    if (!NUBE || !NUBE.mensajes) return;
+    var limite = 500, filas = [];
+    var consulta = NUBE.url + '/rest/v1/' + NUBE.mensajes +
+          '?select=id,asunto,fecha,puntos,accion,eventos&order=fecha.desc,id.desc&limit=' + limite +
+          '&fecha=gte.' + encodeURIComponent(MENSAJES_DESDE.toISOString()) + '&fecha=lte.' +
+          encodeURIComponent(new Date().toISOString());
+    function lote(offset) {
+      return fetch(consulta + '&offset=' + offset, {headers: encabezado()})
+        .then(function (r) {
+          if (r.status === 404) throw new Error('falta el SQL en Supabase');
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json();
+        })
+        .then(function (parte) {
+          if (!Array.isArray(parte)) throw new Error('respuesta de mensajes no válida');
+          filas = filas.concat(parte);
+          return parte.length === limite ? lote(offset + limite) : filas;
+        });
+    }
+    return lote(0).then(pintarMensajes)
+      .catch(function () {});      // un fallo no borra los mensajes ya visibles
+  }
+
+  // ---- pestañas: calendario y mensajes ----
+  var vistaActiva = 'calendario';
+  function pestana(nombre) {
+    var cal = document.getElementById('vista-calendario');
+    var men = document.getElementById('mensajes');
+    var tcal = document.getElementById('tab-calendario');
+    var tmen = document.getElementById('tab-mensajes');
+    // sin mensajes no hay pestaña de mensajes: se cae al calendario
+    if (nombre === 'mensajes' && (!tmen || tmen.hidden)) nombre = 'calendario';
+    vistaActiva = nombre;
+    if (cal) cal.hidden = (nombre !== 'calendario');
+    if (men) men.hidden = (nombre !== 'mensajes');
+    if (tcal) tcal.className = (nombre === 'calendario') ? 'activa' : '';
+    if (tmen) tmen.className = (nombre === 'mensajes') ? 'activa' : '';
+  }
+
+  function alCambiarPestana(ev) {
+    var id = (ev && ev.currentTarget && ev.currentTarget.id) || '';
+    pestana(id === 'tab-mensajes' ? 'mensajes' : 'calendario');
+  }
+
+  ['tab-calendario', 'tab-mensajes'].forEach(function (id) {
+    var b = document.getElementById(id);
+    if (b) b.addEventListener('click', alCambiarPestana);
+  });
+  if (typeof location !== 'undefined'
+      && location.hash === '#mensajes') pestana('mensajes');
+
   reconstruir();
   repintar();
-  if (NUBE) cargarFilas();
+  if (NUBE) { cargarFilas(); cargarMensajes(); }
 
   // gancho para pruebas (y para mirar el estado desde la consola)
   window.__calendario = {
@@ -1490,6 +1695,8 @@ _PLANTILLA = r"""<!DOCTYPE html>
     },
     eventos: function () { return eventosBase; },
     filas: function () { return filasNube; },
+    mensajes: pintarMensajes,
+    recargarMensajes: cargarMensajes,
     recargar: cargarFilas
   };
 })();
@@ -1582,6 +1789,8 @@ def a_html(registros: list[dict], ruta: Path,
 
     nube_dict = (None if nube is None
                  else {"url": nube.url, "tabla": nube.tabla, "key": nube.clave})
+    if nube_dict is not None:
+        nube_dict["mensajes"] = "comunicados"
     if nube_dict is not None and avisos_clave:
         nube_dict["vapid"] = str(avisos_clave)
     nube_json = json.dumps(nube_dict, ensure_ascii=False, separators=(",", ":"))

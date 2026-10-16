@@ -5,6 +5,7 @@
 // comunidad (nuevo evento, corrección remota y deshacer) manda lo correcto a
 // Supabase.
 import { readFileSync } from "node:fs";
+import { URL as URLReal } from "node:url";
 
 const html = readFileSync("salida/calendario_evaluaciones.html", "utf8");
 
@@ -45,7 +46,10 @@ for (const id of ["datos", "ics-b64", "nube", "mes-actual", "rejilla", "detalle"
                   "leyenda", "anterior", "siguiente", "hoy", "imprimir",
                   "descargar", "nuevo", "nube-estado", "modal", "m-titulo",
                   "m-autor", "m-campos", "m-error", "m-cancelar", "m-guardar",
-                  "instalar", "avisos", "probar", "avisos-estado"]) {
+                  "instalar", "avisos", "probar", "avisos-estado",
+                  "pestanas", "tab-calendario", "tab-mensajes",
+                  "cuenta-mensajes", "vista-calendario", "mensajes",
+                  "mensajes-lista"]) {
   const el = new Elem("div");
   el.id = id;
   porId[id] = el;
@@ -55,6 +59,10 @@ for (const id of ["datos", "ics-b64", "nube", "mes-actual", "rejilla", "detalle"
     el.textContent = mm[1].trim();
   }
 }
+
+// el DOM simulado no parsea el HTML: se copian los «hidden» de la maqueta
+porId["tab-mensajes"].hidden = /<button id="tab-mensajes"[^>]*hidden/.test(html);
+porId["mensajes"].hidden = /<section id="mensajes"[^>]*hidden/.test(html);
 
 let descargado = null;
 globalThis.document = {
@@ -73,18 +81,44 @@ globalThis.URL = {
 // filasSim = lo que "hay en la nube"; posts = lo que la página envió.
 const filasSim = [];
 const posts = [];
+// la tabla «comunicados» (los correos de la Scuola) va aparte de las correcciones
+const comunicadosSim = [
+  { id: "c1", asunto: "3ª Reunión de Apoderados", fecha: "2026-10-15T18:40:00Z",
+    puntos: ["Miércoles 21 a las 18:30 en la Scuola."],
+    accion: "Asistir puntualmente.",
+    eventos: [{ titulo: "Reunión de Apoderados",
+                fecha_inicio: "2026-10-21T18:30:00" }] },
+  { id: "c2", asunto: "Informe de notas", fecha: "2026-10-09T12:05:00Z",
+    puntos: ["Se entrega el lunes 26 por la intranet."], accion: "", eventos: [] },
+];
+const consultasMensajes = [];
+let errorMensajes = false;
 globalThis.fetch = async (url, opts = {}) => {
+  // cada tabla tiene su propio simulacro
+  const comu = String(url).indexOf("/comunicados") >= 0;
+  const lista = comu ? comunicadosSim : filasSim;
+  const hechos = comu ? [] : posts;
+  if (comu) {
+    const consulta = new URLReal(url);
+    consultasMensajes.push(consulta.searchParams);
+    if (errorMensajes) return { ok: false, status: 503 };
+    const offset = Number(consulta.searchParams.get('offset') || 0);
+    const limite = Number(consulta.searchParams.get('limit') || 1000);
+    return { ok: true, status: 200, json: async () => lista.slice(offset, offset + limite) };
+  }
   if (opts && opts.method === "POST") {
     const cuerpo = JSON.parse(opts.body);
-    const fila = { id: "f" + (posts.length + 1),
+    if (comu && lista.some((f) => f.id === cuerpo.id))   // clave primaria
+      return { ok: true, status: 200, text: async () => "[]" };
+    const fila = { id: "f" + (hechos.length + 1),
                    creado: new Date().toISOString(), ...cuerpo };
-    filasSim.push(fila);
-    posts.push(fila);
+    lista.push(fila);
+    hechos.push(fila);
     return { ok: true, status: 201, text: async () => JSON.stringify([fila]) };
   }
   return { ok: true, status: 200,
-           json: async () => [...filasSim],
-           text: async () => JSON.stringify(filasSim) };
+           json: async () => [...lista],
+           text: async () => JSON.stringify(lista) };
 };
 
 // ---------- ejecutar el script de la página ----------
@@ -224,8 +258,13 @@ for (const ev of datos.eventos.filter((e) => e.f.startsWith("2026-10-"))) {
   if (ev.co && !meta.includes("coef.")) fallo("falta el coeficiente el " + ev.f + ": " + meta);
   if (/ponderación|Sub-evaluación|^Evaluación$/m.test(meta))
     fallo("sobra la ponderación o la línea de tipo el " + ev.f + ": " + meta);
-  if (meta.indexOf("\n") < 0)
-    fallo("meta sin un item por linea el " + ev.f + ": " + meta);
+  // un ítem, un salto: sólo los campos con valor, cada uno en su línea
+  const lineas = meta.split("\n").filter((l) => l.trim());
+  const esperadas = (ev.p ? 1 : 0) + (ev.co ? 1 : 0)
+                  + (numero ? (esSub ? 2 : 1) : 0);
+  if (lineas.length !== esperadas)
+    fallo("un item por linea el " + ev.f + " (" + esperadas + " esperadas): "
+          + JSON.stringify(meta));
 
   if (!ejemplo) ejemplo = item.children[0].textContent + " · " + tit + " · "
     + meta.split("\n").join(" > ");
@@ -251,15 +290,19 @@ if (porId["mes-actual"].textContent !== "Octubre 2026")
 ok("navegación: sig/anter/hoy");
 
 // 5) leyenda
-const nAsignaturas = Object.keys(datos.colores).length;
+const nAsignaturas = new Set(Object.keys(datos.colores).map(a =>
+  a.trim().replace(/\s+/g, ' ').toUpperCase())).size;
 if (!porId.leyenda.children.length
     || porId.leyenda.children.length !== nAsignaturas)
   fallo("leyenda: " + porId.leyenda.children.length + " de " + nAsignaturas);
 ok("leyenda: " + nAsignaturas + " asignaturas");
 const reglaLeyenda = (html.match(/#leyenda\s*{[^}]*}/) || [])[0] || "";
-if (!/justify-content:\s*space-between/.test(reglaLeyenda))
-  fallo("la leyenda debe justificarse dentro del cuadro: " + reglaLeyenda);
-ok("leyenda justificada dentro del cuadro");
+if (!/justify-content:\s*flex-start/.test(reglaLeyenda))
+  fallo("la leyenda debe quedar compacta: " + reglaLeyenda);
+const nombresLeyenda = porId.leyenda.children.map(el => el.children[1].nodeValue);
+if (!nombresLeyenda.includes("Lenguaje") || nombresLeyenda.includes("LENGUAJE Y COMUNICACIÓN"))
+  fallo("la leyenda debe usar nombres cortos: " + nombresLeyenda);
+ok("leyenda compacta, nombres cortos y sin duplicados");
 
 // 6) descarga del .ics
 porId.descargar.click();
@@ -432,5 +475,89 @@ porId.instalar.click();
 if (!porId["avisos-estado"].textContent.includes("Instalar"))
   fallo("instalar sin instrucción: " + JSON.stringify(porId["avisos-estado"].textContent));
 ok("instalar: " + porId["avisos-estado"].textContent);
+
+// ---- pestañas: calendario y mensajes de la Scuola ----
+const todoTexto = (el) => (el.textContent || "")
+  + (el.children || []).map(todoTexto).join(" ");
+
+globalThis.window.__calendario.mensajes([
+  { id: "x1", asunto: "Excursión a Villa Grimaldi", fecha: "2026-10-13T09:15:00Z",
+    puntos: ["Salida el viernes 23 a las 08:45."], accion: "Autorizar con firma.",
+    eventos: [{ titulo: "Excursión", fecha_inicio: "2026-10-23T08:45:00" }] },
+  { id: "x2", asunto: "Informe de notas", fecha: "2026-10-09T12:05:00Z",
+    puntos: ["Se entrega el lunes 26."], accion: "", eventos: [] },
+]);
+if (porId["tab-mensajes"].hidden) fallo("con mensajes la pestaña debe aparecer");
+if (porId["cuenta-mensajes"].textContent !== "2")
+  fallo("cuenta de mensajes: " + porId["cuenta-mensajes"].textContent);
+if (porId["vista-calendario"].hidden)
+  fallo("el calendario debería seguir visible al cargar");
+if (!porId["mensajes"].hidden)
+  fallo("los mensajes deben esperar a que se abra su pestaña");
+ok("pestañas: aparece «Mensajes» con " + porId["cuenta-mensajes"].textContent);
+
+porId["tab-mensajes"].click();
+if (!porId["vista-calendario"].hidden) fallo("abrir mensajes no oculta el calendario");
+if (porId["mensajes"].hidden) fallo("la pestaña no mostró la sección de mensajes");
+if (porId["tab-mensajes"].className !== "activa") fallo("no marcó la pestaña activa");
+const items = porId["mensajes-lista"].children;
+if (items.length !== 2) fallo("mensajes pintados: " + items.length);
+const txt = items.map(todoTexto).join(" ");
+if (!txt.includes("Excursión a Villa Grimaldi") || !txt.includes("Informe de notas"))
+  fallo("faltan asuntos: " + txt);
+if (!txt.includes("Autorizar con firma.") || !txt.includes("2026-10-23"))
+  fallo("falta la acción o el evento: " + txt);
+ok("pestaña de mensajes: 2 comunicados con asunto, puntos, acción y evento");
+
+porId["tab-calendario"].click();
+if (porId["vista-calendario"].hidden) fallo("volver al calendario no lo restauró");
+if (!porId["mensajes"].hidden) fallo("volver al calendario no cerró los mensajes");
+if (porId["tab-calendario"].className !== "activa") fallo("no volvió la pestaña activa");
+ok("pestañas: se puede volver al calendario");
+porId["tab-mensajes"].click();
+if (porId["mensajes"].hidden || !porId["vista-calendario"].hidden)
+  fallo("la pestaña de mensajes debe poder abrirse otra vez");
+porId["tab-calendario"].click();
+ok("pestañas: abrir y volver repetidamente no pierde los mensajes");
+
+globalThis.window.__calendario.mensajes([
+  { id: 'viejo', asunto: 'No mostrar agosto', fecha: '2026-09-01T03:59:59.999Z' },
+  { id: 'inicio', asunto: 'Inicio de septiembre', fecha: '2026-09-01T04:00:00Z' },
+  { id: 'invalido', asunto: 'Sin fecha válida', fecha: 'fecha inválida' },
+  { id: 'futuro', asunto: 'No mostrar fechas futuras', fecha: '2999-10-01T12:00:00Z' },
+]);
+if (porId['cuenta-mensajes'].textContent !== '1')
+  fallo('el filtro debe empezar el 1 de septiembre a medianoche de Chile y terminar en el presente');
+if (!todoTexto(porId['mensajes-lista']).includes('Inicio de septiembre')
+    || todoTexto(porId['mensajes-lista']).includes('No mostrar agosto')
+    || todoTexto(porId['mensajes-lista']).includes('No mostrar fechas futuras'))
+  fallo('se mostraron comunicados anteriores al inicio');
+globalThis.window.__calendario.mensajes([
+  { id: 'viejo', asunto: 'Agosto', fecha: '2026-08-31T15:00:00Z' },
+]);
+if (porId['mensajes-lista'].children.length || !porId['tab-mensajes'].hidden
+    || !porId['mensajes'].hidden || porId['vista-calendario'].hidden)
+  fallo('sin mensajes desde septiembre debe limpiar lo anterior y volver al calendario');
+ok('mensajes: desde el 01/09/2026 inclusive en Chile hasta hoy, sin agosto ni fechas futuras/inválidas');
+
+// Más de 20 y de 500 comunicados: todo el período, sin truncamiento silencioso.
+comunicadosSim.splice(0, comunicadosSim.length, ...Array.from({ length: 501 }, (_, i) => ({
+  id: 'paginado-' + i, asunto: 'Aviso ' + i, fecha: '2026-09-10T12:00:00Z', puntos: []
+})));
+consultasMensajes.length = 0;
+await window.__calendario.recargarMensajes();
+if (porId['cuenta-mensajes'].textContent !== '501' || porId['mensajes-lista'].children.length !== 501)
+  fallo('no se cargó el período completo de comunicados');
+if (consultasMensajes.map(q => q.get('offset')).join(',') !== '0,500')
+  fallo('paginación de mensajes incorrecta');
+if (!consultasMensajes.every(q => q.get('order') === 'fecha.desc,id.desc'
+    && q.getAll('fecha')[0] === 'gte.2026-09-01T04:00:00.000Z'
+    && q.getAll('fecha')[1].startsWith('lte.')))
+  fallo('la paginación perdió el orden o los límites de fecha');
+errorMensajes = true;
+await window.__calendario.recargarMensajes();
+if (porId['mensajes-lista'].children.length !== 501)
+  fallo('un error de red borró los mensajes que ya se habían cargado');
+ok('mensajes: período completo paginado (501), orden estable y sin borrar la vista ante fallos de red');
 
 console.log("\nTODO OK");

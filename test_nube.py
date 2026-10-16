@@ -37,7 +37,10 @@ def main() -> int:
     datos = json.loads(
         re.search(r'id="datos">([\s\S]*?)</script>', pagina).group(1)
         .replace("<\\/", "</"))
-    ev = next(e for e in datos["eventos"] if e["f"] == "2026-10-14")
+    # elige una evaluación real de la página: la escuela cambia el calendario,
+    # así que nada va atado a una fecha concreta
+    ev = next(e for e in datos["eventos"]
+              if e.get("p") and e.get("n") and e.get("t") != "Resumen semanal")
     clave, profesor, fecha = ev["k"], ev["p"], ev["f"]
     print(f"objetivo: {ev['a']} {ev['e']} ({fecha}) · clave {clave}")
     print(f"          profesor actual: «{profesor}»")
@@ -57,9 +60,9 @@ def main() -> int:
     # ---- 3. la corrida de las 07:00 debe reflejarlo en los archivos ----
     codigo, texto = correr("--formatos", "html,json")
     assert codigo == 0, texto
-    linea = [l for l in texto.splitlines() if "Correcciones aplicadas" in l]
+    linea = [l for l in texto.splitlines() if "Correcciones: " in l]
     print("  ", linea[0] if linea else "(sin línea de correcciones)")
-    assert "1 corregidas" in texto, texto
+    assert "1 corrección" in texto, texto
     json_salida = json.loads(
         (BASE / "salida" / "calendario_evaluaciones.json")
         .read_text("utf-8"))["registros"]

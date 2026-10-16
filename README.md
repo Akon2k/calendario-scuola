@@ -10,6 +10,8 @@ deja listas en varios lugares a la vez:
    sábado;
 4. **avisos por notificación**: el sábado con la semana que viene, y el mismo
    día en que algo cambia.
+5. una pestaña **Mensajes** con los comunicados generales del colegio,
+   alimentada por BotScuola (Gmail, Google Apps Script y Groq).
 
 Sólo lee tu propio calendario con tus credenciales de EduFácil. Resultado
 real del año 2026: 102 evaluaciones de marzo a diciembre, en 10 asignaturas,
@@ -128,6 +130,9 @@ Lo que puede hacer quien la abre:
 - **Descargar .ics**: baja el calendario para Google Calendar o Outlook web.
 - **Instalar app**: la convierte en una app del celular o de la PC.
 - **Avisos**: da de alta el navegador para recibir notificaciones.
+- **Mensajes**: muestra los comunicados generales desde el 1 de septiembre de
+  2026 hasta el presente, del más reciente al más antiguo. La pestaña tiene
+  desplazamiento interno y mantiene las dimensiones del calendario.
 
 El alcance es corregir lo existente y agregar: no hay botón de borrar ni
 ocultar evaluaciones. El nombre que escribe al corregir queda guardado como
@@ -174,6 +179,31 @@ Sáb 2026-10-10  →  "14, 15 y 16 oct · 3 evaluaciones"
 El estado de los avisos queda en `logs/avisos_estado.json` y sólo avanza
 cuando el envío sale bien. Para probar todo el circuito sin esperar al
 sábado está `python avisos.py --probar-sabado`.
+
+## Comunicados de BotScuola
+
+La integración está en [`botscuola/`](botscuola/README.md). El flujo es Gmail →
+remitente/fecha → clasificación de contenido → `public.comunicados` → Mensajes.
+Sólo admite el dominio exacto del colegio; tener a un profesor o a Convivencia
+en copia **no** evita el control de privacidad. Los personales y dudosos quedan
+fuera; la IA puede equivocarse y su confianza no garantiza que un correo sea
+público. Se analiza cada mensaje por separado y no se leen adjuntos.
+
+- `previsualizarComunicados`: diagnóstico privado sin publicar ni notificar.
+- `sincronizarComunicados`: carga la web sin reenviar avisos históricos.
+- `procesarCorreosEscolares`: disparador habitual, sincroniza la web y conserva
+  los canales privados de WhatsApp, Telegram y Google Calendar.
+- Los IDs evitan duplicados; los fallos se reintentan sin inventar eventos.
+  Groq recibe solicitudes espaciadas y se pausa tras límites de cuota.
+- La lectura de comunicados es pública. INSERT exige la clave privada del bot;
+  no se conceden UPDATE ni DELETE. El SQL generado y la clave quedan ignorados
+  por git; sólo se versiona la plantilla SQL sin credenciales.
+
+Publicar GitHub no instala el código ni activa el disparador en Google: se
+reemplaza `Código.gs` en el proyecto existente conservando sus Propiedades y
+`appsscript.json`. No hace falta una hoja de aprobación manual.
+Los push web existentes cubren calendario/correcciones/resúmenes; todavía no
+envían avisos por nuevos comunicados.
 
 ## Correcciones de la comunidad (Supabase)
 
@@ -362,6 +392,7 @@ main.py             programa principal: baja todo y genera todo
 avisos.py           los avisos (sábado y cambios)
 publicar.py         sube la página a GitHub Pages
 generar_vapid.py    genera las llaves de los avisos
+botscuola/          bot de Apps Script, instalación y plantilla SQL sin claves
 edufacil/
   cliente.py        sesión, menú y llamadas al sitio
   datos.py          el JSON del sitio a filas ordenadas
@@ -372,6 +403,7 @@ edufacil/
   outlook.py        las citas en Outlook
 test_pipeline.py    pruebas del pipeline
 test_pagina.mjs     pruebas de la página (Node)
+test_botscuola.mjs  pruebas simuladas de Gmail, IA, privacidad y carga automática
 test_avisos.py      pruebas de los avisos
 test_nube.py        prueba en vivo contra Supabase
 ejecutar.bat        corro todo y publico (doble clic)
@@ -388,6 +420,7 @@ docker-compose.yml  la página en la red local (y túnel opcional)
 | `python test_pipeline.py` | Que con datos de forma real salgan bien el Excel/CSV/JSON, el resumen del sábado con su línea en blanco, las claves estables, la página y el `.ics`, los recursos PWA y todas las reglas de la nube (corrección, idempotencia, caducidad, `anula`, alta, validación y respaldo) |
 | `node test_pagina.mjs` | Ejecuta el JS de la página sobre un DOM simulado: pintado, clics, descarga del `.ics`, que los resúmenes calculados en JavaScript coincidan uno por uno con los de Python, el editor, la sección PWA, las instrucciones de uso y que el pie no nombre la carpeta de Outlook |
 | `python test_avisos.py` | Los dos avisos: resumen del sábado (con línea en blanco, deduplicado y «Cambios:» colgando), cambios del sitio, correcciones de la comunidad con su autor, recorte «+N más», instantánea idempotente y suscripciones caducas — sin red |
+| `node test_botscuola.mjs` | Remitentes/destinatarios, privacidad con CC/CCO, evidencia literal, carga automática sin duplicados, vista previa sin efectos y reintentos seguros de Groq — sin servicios reales |
 | `python test_nube.py` | **En vivo contra Supabase**: escribe una corrección, la verifica en los archivos, la anula y comprueba que el dato vuelve al original |
 
 ## Si algo falla
