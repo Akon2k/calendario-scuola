@@ -283,7 +283,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
     h1 { font-size: 19px; }
     .marca { gap: 10px; flex-basis: 100%; }
     .marca .logo { width: 60px; height: 43px; }
-    #clima { flex-basis: 200px; margin-left: auto; padding: 5px 8px; }
+    #clima { flex: 1 1 100%; width: 100%; margin: 2px 0; padding: 7px 12px; }
     #clima .actual { font-size: 16px; }
     #clima .hora { font-size: 18px; }
     .sub { font-size: 12px; }
@@ -1199,6 +1199,10 @@ _PLANTILLA = r"""<!DOCTYPE html>
       var ls = (typeof window !== 'undefined') ? window.localStorage : null;
       if (!ls) return null;
       if (valor === undefined) return ls.getItem(clave);
+      if (valor === null || valor === '') {
+        if (ls.removeItem) ls.removeItem(clave);
+        return null;
+      }
       ls.setItem(clave, valor);
     } catch (e) { /* sin almacenamiento local */ }
     return null;
@@ -1792,8 +1796,28 @@ _PLANTILLA = r"""<!DOCTYPE html>
     }
   }
 
-  // La ubicación sólo se pide al pulsar el botón. No se guarda en disco ni Supabase.
-  var lugarClima = { latitud: -36.83, longitud: -73.05, nombre: 'Concepción' };
+  // La ubicación se pide al pulsar el botón y se recuerda en este navegador.
+  var lugarClimaDefecto = { latitud: -36.83, longitud: -73.05, nombre: 'Concepción' };
+  var lugarClima = (function () {
+    try {
+      var guardado = almacenar('edufacil-clima-lugar');
+      if (guardado) {
+        var obj = JSON.parse(guardado);
+        if (obj && typeof obj.latitud === 'number' && Number.isFinite(obj.latitud)
+            && typeof obj.longitud === 'number' && Number.isFinite(obj.longitud)
+            && typeof obj.nombre === 'string' && obj.nombre.trim()) {
+          return {
+            latitud: Math.round(obj.latitud * 100) / 100,
+            longitud: Math.round(obj.longitud * 100) / 100,
+            nombre: obj.nombre.trim().slice(0, 60),
+            propia: true
+          };
+        }
+      }
+    } catch (e) {}
+    return { latitud: lugarClimaDefecto.latitud, longitud: lugarClimaDefecto.longitud,
+             nombre: lugarClimaDefecto.nombre };
+  })();
   var versionClima = 0;
   function estadoDelClima(codigo, esDia) {
     if (codigo === 0) return [esDia ? '☀️' : '🌙', 'Despejado'];
@@ -1881,7 +1905,9 @@ _PLANTILLA = r"""<!DOCTYPE html>
         resolver(cargarClima());
       }
       function sinUbicacion() {
-        lugarClima = { latitud: -36.83, longitud: -73.05, nombre: 'Concepción' };
+        lugarClima = { latitud: lugarClimaDefecto.latitud, longitud: lugarClimaDefecto.longitud,
+                       nombre: lugarClimaDefecto.nombre };
+        almacenar('edufacil-clima-lugar', null);
         terminar('No se pudo obtener permiso o ubicación. Se muestra Concepción. Puedes intentarlo otra vez.');
       }
       if (typeof navigator === 'undefined' || !navigator.geolocation) { sinUbicacion(); return; }
@@ -1896,7 +1922,12 @@ _PLANTILLA = r"""<!DOCTYPE html>
             longitud: Math.round(lon * 100) / 100, nombre: 'Zona actual', propia: true };
           nombreUbicacionClima(lugarClima).then(function (nombre) {
             lugarClima.nombre = nombre || 'Zona actual';
-            terminar(nombre ? 'Clima de ' + nombre + '. Ubicación aproximada; no se guarda en el calendario.' :
+            almacenar('edufacil-clima-lugar', JSON.stringify({
+              latitud: lugarClima.latitud,
+              longitud: lugarClima.longitud,
+              nombre: lugarClima.nombre
+            }));
+            terminar(nombre ? 'Clima de ' + nombre + '. Ubicación guardada en tu navegador.' :
               'No se pudo obtener el nombre de la ciudad. Se muestra el clima de tu ubicación aproximada.');
           });
         }, sinUbicacion, { enableHighAccuracy: false, timeout: 10000, maximumAge: 1800000 });

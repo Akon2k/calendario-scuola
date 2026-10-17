@@ -75,10 +75,17 @@ globalThis.document = {
 let impresiones = 0;
 const eventosVentana = {};
 const intervalos = [];
+const almacenamientoMemoria = new Map();
 globalThis.window = {
   print: () => { impresiones++; },
   addEventListener: (tipo, fn) => { (eventosVentana[tipo] ||= []).push(fn); },
   setInterval: (fn, demora) => { intervalos.push({ fn, demora }); return intervalos.length; },
+  localStorage: {
+    getItem: (k) => (almacenamientoMemoria.has(k) ? almacenamientoMemoria.get(k) : null),
+    setItem: (k, v) => { almacenamientoMemoria.set(k, String(v)); },
+    removeItem: (k) => { almacenamientoMemoria.delete(k); },
+    clear: () => { almacenamientoMemoria.clear(); },
+  },
 };
 const eventoVentana = tipo => (eventosVentana[tipo] || []).forEach(fn => fn());
 globalThis.URL = {
@@ -207,6 +214,8 @@ if (consultasUbicacion !== 1 || porId['clima-ciudad'].textContent !== 'Valparaí
 if (consultasNombreLugar.length !== 1 || consultasNombreLugar[0].opts.headers
     || !consultasNombreLugar[0].url.includes('latitude=-33.05&longitude=-71.61'))
   fallo('el nombre debe consultarse con coordenadas aproximadas, sin claves del calendario');
+if (!almacenamientoMemoria.get('edufacil-clima-lugar')?.includes('Valparaíso'))
+  fallo('la ubicación obtenida debe guardarse en el almacenamiento local del navegador');
 await window.__calendario.recargarClima();
 if (!consultasClima.at(-1).url.includes('latitude=-33.05&longitude=-71.61'))
   fallo('las actualizaciones deben conservar la ubicación elegida durante la sesión');
@@ -217,6 +226,8 @@ if (porId['clima-ciudad'].textContent !== 'Mi ubicación' || porId['clima-ubicac
     || !consultasClima.at(-1).url.includes('latitude=-36.83&longitude=-73.05'))
   fallo('sin permiso debe volver a Concepción sin bloquear la página');
 if (consultasNombreLugar.length !== 1) fallo('sin permiso no debe consultar el nombre de una ubicación');
+if (almacenamientoMemoria.has('edufacil-clima-lugar'))
+  fallo('al revocar o fallar el permiso debe borrar la ubicación guardada');
 permisoUbicacion = true;
 errorNombreLugar = true;
 porId['clima-ubicacion'].click();
