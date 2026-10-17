@@ -80,11 +80,23 @@ _PLANTILLA = r"""<!DOCTYPE html>
   .sub span { display: inline-block; }
   .acciones { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; flex-basis: 100%; }
   #clima {
-    flex: 0 0 220px; align-self: flex-start; padding: 6px 10px;
+    flex: 0 0 260px; align-self: flex-start; padding: 7px 11px;
     display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px;
     text-align: center; background: #fff; border: 1px solid var(--borde);
     border-radius: 10px; line-height: 1.3;
   }
+  #clima-pronostico {
+    grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 4px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--borde);
+    text-align: center;
+  }
+  .dia-pronostico {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 3px 2px; border-radius: 6px; background: #f9fafb;
+  }
+  .dia-pronostico .dia-nombre { font-weight: 600; color: var(--suave); font-size: 10.5px; }
+  .dia-pronostico .dia-icono { font-size: 14px; line-height: 1.1; margin: 1px 0; }
+  .dia-pronostico .dia-temp { font-size: 10px; color: #1f2937; white-space: nowrap; }
   #clima .ciudad { display: block; font-size: 11px; color: var(--suave); }
   #clima .actual { grid-column: 1; display: block; margin: 2px 0; font-size: 18px; font-weight: 600; }
   #clima .hora {
@@ -199,7 +211,34 @@ _PLANTILLA = r"""<!DOCTYPE html>
     background: #fff; border: 1px solid var(--borde); border-radius: 12px;
   }
   #mensajes h2 { margin: 0 0 6px; font-size: 13.5px; color: #111827; }
-  .mensaje { border-top: 1px solid var(--borde); padding: 9px 0 7px; }
+  .mes-grupo {
+    margin-bottom: 12px; border: 1px solid var(--borde);
+    border-radius: 10px; background: #fff; overflow: hidden;
+  }
+  .mes-grupo:last-child { margin-bottom: 0; }
+  .mes-cabecera {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; background: #f9fafb; font-size: 13.5px;
+    font-weight: 600; color: #111827; cursor: pointer; user-select: none;
+    list-style: none;
+  }
+  .mes-cabecera::-webkit-details-marker { display: none; }
+  .mes-cabecera:hover { background: #eef8f0; color: #006b2b; }
+  .mes-grupo[open] > .mes-cabecera {
+    border-bottom: 1px solid var(--borde);
+    background: #eef8f0; color: #006b2b;
+  }
+  .mes-titulo-wrap { display: flex; align-items: center; gap: 8px; }
+  .mes-flecha {
+    display: inline-block; font-size: 10px; transition: transform .2s ease;
+  }
+  .mes-grupo[open] .mes-flecha { transform: rotate(90deg); }
+  .mes-cuenta {
+    font-size: 11.5px; font-weight: 600; padding: 2px 8px;
+    border-radius: 999px; background: #def0e3; color: #006b2b;
+  }
+  .mes-grupo:not([open]) .mes-cuenta { background: #e5e7eb; color: var(--suave); }
+  .mensaje { border-top: 1px solid var(--borde); padding: 10px 14px 8px; }
   .mensaje.cabecera { border-top: 0; }
   .mensaje .cab { display: flex; flex-wrap: wrap; gap: 4px 10px;
                   align-items: baseline; }
@@ -385,6 +424,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
     <span class="hora" aria-live="off">
       <time id="clima-hora" title="Hora local de este dispositivo">--:--</time></span>
     <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a>
+    <div id="clima-pronostico" aria-label="Pronóstico para los próximos tres días"></div>
   </div>
   <div class="acciones">
     <button id="anterior" title="Mes anterior">&#8249;</button>
@@ -1715,50 +1755,95 @@ _PLANTILLA = r"""<!DOCTYPE html>
       pestana('calendario');
       return;
     }
-    filas.forEach(function (m, i) {
-      var caja = document.createElement('article');
-      caja.className = 'mensaje' + (i === 0 ? ' cabecera' : '');
-
-      var cab = document.createElement('div');
-      cab.className = 'cab';
-      var asunto = document.createElement('span');
-      asunto.className = 'asunto';
-      asunto.textContent = m.asunto || 'Comunicado';
-      cab.appendChild(asunto);
-      var cuando = document.createElement('span');
-      cuando.className = 'cuando';
-      cuando.textContent = fechaLarga(m.fecha);
-      cab.appendChild(cuando);
-      caja.appendChild(cab);
-
-      var puntos = Array.isArray(m.puntos) ? m.puntos : [];
-      if (puntos.length) {
-        var ul = document.createElement('ul');
-        ul.className = 'puntos';
-        puntos.forEach(function (p) {
-          var li = document.createElement('li');
-          li.textContent = p;
-          ul.appendChild(li);
-        });
-        caja.appendChild(ul);
+    var gruposMes = [];
+    var porMes = {};
+    filas.forEach(function (m) {
+      var f = new Date(m.fecha);
+      var clave = isNaN(f.getTime()) ? 'sin-fecha' : f.getFullYear() + '-' + String(f.getMonth() + 1).padStart(2, '0');
+      var nombre = isNaN(f.getTime()) ? 'Otros comunicados' : (MESES[f.getMonth()] + ' ' + f.getFullYear());
+      if (!porMes[clave]) {
+        var g = { clave: clave, nombre: nombre, mensajes: [] };
+        porMes[clave] = g;
+        gruposMes.push(g);
       }
+      porMes[clave].mensajes.push(m);
+    });
 
-      (Array.isArray(m.eventos) ? m.eventos : []).forEach(function (e) {
-        var linea = document.createElement('p');
-        linea.className = 'evento';
-        linea.textContent = (e.fecha_inicio || '').slice(0, 10)
-                          + ' · ' + (e.titulo || '');
-        caja.appendChild(linea);
+    gruposMes.forEach(function (g, idx) {
+      var det = document.createElement('details');
+      det.className = 'mes-grupo';
+      if (idx === 0) det.open = true;
+
+      var sum = document.createElement('summary');
+      sum.className = 'mes-cabecera';
+
+      var wrap = document.createElement('div');
+      wrap.className = 'mes-titulo-wrap';
+      var flecha = document.createElement('span');
+      flecha.className = 'mes-flecha';
+      flecha.textContent = '▶';
+      var tit = document.createElement('span');
+      tit.className = 'mes-titulo';
+      tit.textContent = g.nombre;
+      wrap.appendChild(flecha);
+      wrap.appendChild(tit);
+      sum.appendChild(wrap);
+
+      var cuenta = document.createElement('span');
+      cuenta.className = 'mes-cuenta';
+      var cant = g.mensajes.length;
+      cuenta.textContent = cant === 1 ? '1 comunicado' : cant + ' comunicados';
+      sum.appendChild(cuenta);
+
+      det.appendChild(sum);
+
+      g.mensajes.forEach(function (m, i) {
+        var caja = document.createElement('article');
+        caja.className = 'mensaje' + (i === 0 ? ' cabecera' : '');
+
+        var cab = document.createElement('div');
+        cab.className = 'cab';
+        var asunto = document.createElement('span');
+        asunto.className = 'asunto';
+        asunto.textContent = m.asunto || 'Comunicado';
+        cab.appendChild(asunto);
+        var cuando = document.createElement('span');
+        cuando.className = 'cuando';
+        cuando.textContent = fechaLarga(m.fecha);
+        cab.appendChild(cuando);
+        caja.appendChild(cab);
+
+        var puntos = Array.isArray(m.puntos) ? m.puntos : [];
+        if (puntos.length) {
+          var ul = document.createElement('ul');
+          ul.className = 'puntos';
+          puntos.forEach(function (p) {
+            var li = document.createElement('li');
+            li.textContent = p;
+            ul.appendChild(li);
+          });
+          caja.appendChild(ul);
+        }
+
+        (Array.isArray(m.eventos) ? m.eventos : []).forEach(function (e) {
+          var linea = document.createElement('p');
+          linea.className = 'evento';
+          linea.textContent = (e.fecha_inicio || '').slice(0, 10)
+                            + ' · ' + (e.titulo || '');
+          caja.appendChild(linea);
+        });
+
+        if (m.accion) {
+          var accion = document.createElement('p');
+          accion.className = 'accion';
+          accion.textContent = 'Acción: ' + m.accion;
+          caja.appendChild(accion);
+        }
+
+        det.appendChild(caja);
       });
 
-      if (m.accion) {
-        var accion = document.createElement('p');
-        accion.className = 'accion';
-        accion.textContent = 'Acción: ' + m.accion;
-        caja.appendChild(accion);
-      }
-
-      lista.appendChild(caja);
+      lista.appendChild(det);
     });
     var pestana2 = document.getElementById('tab-mensajes');
     if (pestana2) {
@@ -1851,7 +1936,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
     var control = new AbortController();
     var tiempo = setTimeout(function () { control.abort(); }, 8000);
     return fetch('https://api.open-meteo.com/v1/forecast?latitude=' + lugar.latitud + '&longitude=' + lugar.longitud +
-          '&current=temperature_2m,weather_code,is_day&timezone=auto',
+          '&current=temperature_2m,weather_code,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=4&timezone=auto',
           {signal: control.signal})
       .then(function (r) {
         if (!r.ok) throw new Error('clima no disponible');
@@ -1871,12 +1956,53 @@ _PLANTILLA = r"""<!DOCTYPE html>
         document.getElementById('clima-temperatura').textContent = Math.round(actual.temperature_2m) + ' °C';
         widget.title = lugar.nombre + ' · ' + estado[1] +
           (typeof actual.time === 'string' ? ' · ' + actual.time.slice(11, 16) + ' (hora local)' : '');
+
+        var contenedorPronostico = document.getElementById('clima-pronostico');
+        if (contenedorPronostico) {
+          contenedorPronostico.innerHTML = '';
+          var daily = datos && datos.daily;
+          if (daily && Array.isArray(daily.time)) {
+            for (var i = 1; i <= 3 && i < daily.time.length; i++) {
+              var d = new Date(daily.time[i] + 'T12:00:00');
+              var diaSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][d.getDay()];
+              var etiqueta = (i === 1) ? 'Mañana' : (diaSemana + ' ' + d.getDate());
+              var code = daily.weather_code[i];
+              var min = daily.temperature_2m_min[i];
+              var max = daily.temperature_2m_max[i];
+              var estDia = estadoDelClima(code, true);
+
+              var diaEl = document.createElement('div');
+              diaEl.className = 'dia-pronostico';
+              diaEl.title = diaSemana + ' ' + d.getDate() + ': ' + estDia[1] +
+                ' (mín ' + Math.round(min) + ' °C / máx ' + Math.round(max) + ' °C)';
+
+              var nomEl = document.createElement('span');
+              nomEl.className = 'dia-nombre';
+              nomEl.textContent = etiqueta;
+              diaEl.appendChild(nomEl);
+
+              var icoEl = document.createElement('span');
+              icoEl.className = 'dia-icono';
+              icoEl.textContent = estDia[0];
+              diaEl.appendChild(icoEl);
+
+              var tempEl = document.createElement('span');
+              tempEl.className = 'dia-temp';
+              tempEl.textContent = Math.round(min) + '° / ' + Math.round(max) + '°';
+              diaEl.appendChild(tempEl);
+
+              contenedorPronostico.appendChild(diaEl);
+            }
+          }
+        }
       })
       .catch(function () {
         if (version !== versionClima) return;
         document.getElementById('clima-icono').textContent = '🌡️';
         document.getElementById('clima-temperatura').textContent = 'Sin datos';
         widget.title = 'Clima de ' + lugar.nombre + ' no disponible; se reintentará al actualizar.';
+        var cont = document.getElementById('clima-pronostico');
+        if (cont) cont.innerHTML = '';
       })
       .then(function () { clearTimeout(tiempo); });
   }

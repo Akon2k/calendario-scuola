@@ -50,7 +50,7 @@ for (const id of ["datos", "ics-b64", "nube", "mes-actual", "rejilla", "detalle"
                   "pestanas", "tab-calendario", "tab-mensajes",
                   "cuenta-mensajes", "vista-calendario", "mensajes",
                   "mensajes-lista", "impresion-mes", "impresion-actividades",
-                  "clima", "clima-icono", "clima-temperatura", "clima-ciudad", "clima-ubicacion", "clima-hora"]) {
+                  "clima", "clima-icono", "clima-temperatura", "clima-ciudad", "clima-ubicacion", "clima-hora", "clima-pronostico"]) {
   const el = new Elem("div");
   el.id = id;
   porId[id] = el;
@@ -109,8 +109,16 @@ const comunicadosSim = [
 ];
 const consultasMensajes = [];
 let errorMensajes = false;
-let respuestaClima = { current: { temperature_2m: 14.6, weather_code: 3, is_day: 1, time: '2026-10-16T19:00' },
-  current_units: { temperature_2m: '°C' } };
+let respuestaClima = {
+  current: { temperature_2m: 14.6, weather_code: 3, is_day: 1, time: '2026-10-16T19:00' },
+  current_units: { temperature_2m: '°C' },
+  daily: {
+    time: ['2026-10-16', '2026-10-17', '2026-10-18', '2026-10-19'],
+    weather_code: [3, 0, 61, 1],
+    temperature_2m_max: [18.2, 19.1, 15.4, 17.0],
+    temperature_2m_min: [11.0, 10.5, 9.2, 10.0]
+  }
+};
 let errorClima = false;
 let permisoUbicacion = true, consultasUbicacion = 0;
 Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { geolocation: {
@@ -237,7 +245,12 @@ if (porId['clima-ciudad'].textContent !== 'Zona actual' || porId['clima-temperat
   fallo('si falla el nombre debe conservar el clima local sin inventar una ciudad');
 if (!html.includes('--verde: #008837') || !html.includes('background: var(--verde)'))
   fallo('los botones principales deben usar el verde del logo');
-ok('clima: Mi ubicación antes del permiso, ciudad real después y fallo seguro sin inventar nombres');
+if (porId['clima-pronostico'].children.length !== 3)
+  fallo('el pronóstico debe mostrar los próximos tres días');
+const diasPronostico = porId['clima-pronostico'].children;
+if (diasPronostico[0].children[0].textContent !== 'Mañana' || !diasPronostico[0].children[2].textContent.includes('°'))
+  fallo('el primer día debe llamarse Mañana con su temperatura');
+ok('clima: actual y pronóstico de los próximos tres días con fallo seguro');
 
 if (!/^\d{2}:\d{2}$/.test(porId['clima-hora'].textContent) || !porId['clima-hora'].dateTime)
   fallo('el widget debe mostrar la hora local en formato de 24 horas');
@@ -686,9 +699,12 @@ porId["tab-mensajes"].click();
 if (!porId["vista-calendario"].hidden) fallo("abrir mensajes no oculta el calendario");
 if (porId["mensajes"].hidden) fallo("la pestaña no mostró la sección de mensajes");
 if (porId["tab-mensajes"].className !== "activa") fallo("no marcó la pestaña activa");
-const items = porId["mensajes-lista"].children;
-if (items.length !== 2) fallo("mensajes pintados: " + items.length);
-const txt = items.map(todoTexto).join(" ");
+const meses = porId["mensajes-lista"].children;
+const articulos = meses.flatMap(m => m.children.filter(c => c.tagName === "article"));
+if (articulos.length !== 2) fallo("mensajes pintados: " + articulos.length);
+if (!meses.some(m => todoTexto(m).includes("Octubre 2026")))
+  fallo("falta el acordeón del mes de octubre");
+const txt = meses.map(todoTexto).join(" ");
 if (!txt.includes("Excursión a Villa Grimaldi") || !txt.includes("Informe de notas"))
   fallo("faltan asuntos: " + txt);
 if (!txt.includes("Autorizar con firma.") || !txt.includes("2026-10-23"))
@@ -732,7 +748,9 @@ comunicadosSim.splice(0, comunicadosSim.length, ...Array.from({ length: 501 }, (
 })));
 consultasMensajes.length = 0;
 await window.__calendario.recargarMensajes();
-if (porId['cuenta-mensajes'].textContent !== '501' || porId['mensajes-lista'].children.length !== 501)
+const total501 = porId['mensajes-lista'].children.reduce((acc, m) =>
+  acc + m.children.filter(c => c.tagName === 'article').length, 0);
+if (porId['cuenta-mensajes'].textContent !== '501' || total501 !== 501)
   fallo('no se cargó el período completo de comunicados');
 if (consultasMensajes.map(q => q.get('offset')).join(',') !== '0,500')
   fallo('paginación de mensajes incorrecta');
@@ -742,7 +760,9 @@ if (!consultasMensajes.every(q => q.get('order') === 'fecha.desc,id.desc'
   fallo('la paginación perdió el orden o los límites de fecha');
 errorMensajes = true;
 await window.__calendario.recargarMensajes();
-if (porId['mensajes-lista'].children.length !== 501)
+const totalTrasError = porId['mensajes-lista'].children.reduce((acc, m) =>
+  acc + m.children.filter(c => c.tagName === 'article').length, 0);
+if (totalTrasError !== 501)
   fallo('un error de red borró los mensajes que ya se habían cargado');
 ok('mensajes: período completo paginado (501), orden estable y sin borrar la vista ante fallos de red');
 
