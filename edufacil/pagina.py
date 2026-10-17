@@ -288,6 +288,12 @@ _PLANTILLA = r"""<!DOCTYPE html>
     #clima .hora { font-size: 18px; }
     .sub { font-size: 12px; }
     .acciones { width: 100%; gap: 6px; }
+    .acciones .primario {
+      flex: 1 1 0; min-width: 80px; padding: 8px 6px;
+      font-size: 12.5px; text-align: center; justify-content: center;
+      white-space: nowrap;
+    }
+    .acciones .nube { flex: 1 1 100%; margin-top: 2px; }
     button {
       min-height: 40px; padding: 8px 12px;
       touch-action: manipulation;    /* sin retardo de doble toque */
