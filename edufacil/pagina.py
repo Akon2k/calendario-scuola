@@ -745,7 +745,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
 </section>
 
 <footer>
-  Outlook se sincroniza solo cada mañana a las 07:00 (tarea programada),
+  Outlook se sincroniza solo cada mañana a las 08:00 (tarea programada),
   así el calendario queda al día sin tocar nada. Las instrucciones de uso
   están justo arriba, en «Instrucciones de uso».
 </footer>
@@ -764,7 +764,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
   if (nubeEl && nubeEl.textContent && nubeEl.textContent.trim()) {
     try { NUBE = JSON.parse(nubeEl.textContent.trim()); } catch (e) { NUBE = null; }
   }
-  // Base embebida (trae las correcciones que había al generarse a las 07:00);
+  // Base embebida (trae las correcciones que había al generarse a las 08:00);
   // las filas de la nube se leen en vivo y se aplican encima con la misma regla
   // que edufacil/ediciones.py, de modo que repetirlas no cambia nada dos veces.
   var eventosBase = (D.eventos || []).slice();
@@ -1602,7 +1602,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
       });
   }
 
-  // Si la corrección venía ya embebida en la base (se hizo antes de las 07:00),
+  // Si la corrección venía ya embebida en la base (se hizo antes de las 08:00),
   // al deshacerla hay que devolver la base a su valor anterior para que se vea
   // ya; la fila anulada se encarga del resto a partir de mañana.
   function revertirBase(k, fila) {

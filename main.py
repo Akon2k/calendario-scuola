@@ -20,7 +20,7 @@ Uso:
 Correcciones comunitarias (Supabase):
     la página permite corregir una fecha o agregar una evaluación; esas filas
     se leen en cada corrida y se aplican encima del scrapeo (Excel/CSV/JSON/
-    .ics y Outlook quedan corregidos a las 07:00).  Ver edufacil/ediciones.py
+    .ics y Outlook quedan corregidos a las 08:00).  Ver edufacil/ediciones.py
 """
 
 from __future__ import annotations

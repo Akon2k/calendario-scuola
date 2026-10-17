@@ -64,7 +64,7 @@ def main() -> int:
     fila = alta.json()[0]
 
     try:
-        # ---- 3. la corrida de las 07:00 debe reflejarlo en los archivos ----
+        # ---- 3. la corrida de las 08:00 debe reflejarlo en los archivos ----
         codigo, texto = correr("--formatos", "html,json")
         assert codigo == 0, texto
         linea = [l for l in texto.splitlines() if "Correcciones: " in l]

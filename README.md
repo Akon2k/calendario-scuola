@@ -279,7 +279,7 @@ nadie haya corregido nada): `truncate table public.ediciones;`
 
 - La página baja las filas **al abrirla** y las aplica encima de los datos
   embebidos: se ve al instante, incluso lo que corrigió otra persona.
-- **Las 07:00** (`tarea.bat`) hace `scrapeo + filas` y de ahí salen los
+- **Las 08:00** (`tarea.bat`) hace `scrapeo + filas` y de ahí salen los
   archivos, la página y las citas de Outlook, todos corregidos. Ese orden es
   a propósito: si Supabase no responde, la corrida no se rompe —usa el
   respaldo local `logs/ediciones.json` o sigue sin correcciones— y lo anota
@@ -357,7 +357,7 @@ docker compose --profile tunel down           # detener todo
 ## Ejecución programada (cada día)
 
 ```bash
-instalar_tarea.bat           # crea la tarea a las 07:00
+instalar_tarea.bat           # crea la tarea a las 08:00
 instalar_tarea.bat 19:30     # crea la tarea a las 19:30
 instalar_tarea.bat /eliminar # la quita
 ```

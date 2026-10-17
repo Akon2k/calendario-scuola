@@ -5,7 +5,7 @@ cd /d "%~dp0"
 
 set "ARG1=%~1"
 set "HORA=%~1"
-if "%HORA%"=="" set "HORA=07:00"
+if "%HORA%"=="" set "HORA=08:00"
 
 if /I "%ARG1%"=="/eliminar" goto eliminar
 

@@ -6,7 +6,7 @@ if not exist logs mkdir logs
 rem 1) Baja el calendario, regenera salida/ y sincroniza Outlook (carpeta
 rem    Scuola Rafaela) con TODO el calendario, sin tope de fecha: lo que
 rem    cambie en el sitio se refleja en Outlook entero, no sólo desde una
-rem    fecha. Si no quieres abrir Outlook a las 07:00, borra "--outlook ..."
+rem    fecha. Si no quieres abrir Outlook a las 08:00, borra "--outlook ..."
 rem    de esta linea.
 python main.py --outlook >> "logs\tarea.log" 2>&1
 if errorlevel 1 (

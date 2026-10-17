@@ -12,7 +12,7 @@ Sólo dos avisos, y ninguno diario:
   quien lo hizo) o cambios del propio sitio (EduFácil agregó, movió o sacó
   una prueba).
 
-La cadena de las 07:00 corre `avisos.py` tras `main.py`, y la tarea por hora
+La cadena de las 08:00 corre `avisos.py` tras `main.py`, y la tarea por hora
 (`avisos_dia.bat`, de 08:00 a 22:00) lo vuelve a correr para que una
 corrección hecha a media tarde se anuncie el mismo día. Todo lo que se envía
 se decide en `preparar_mensajes()`, que es pura y se prueba sin red; lo que

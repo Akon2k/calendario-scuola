@@ -3,7 +3,7 @@
 #   powershell -ExecutionPolicy Bypass -File instalar_tarea.ps1 -Hora 19:30
 #   powershell -ExecutionPolicy Bypass -File instalar_tarea.ps1 -Eliminar
 param(
-    [string]$Hora = "07:00",
+    [string]$Hora = "08:00",
     [switch]$Eliminar
 )
 
