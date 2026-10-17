@@ -140,7 +140,7 @@ def main() -> int:
     ics = base64.b64decode(embebido.group(1)).decode("utf-8")
     assert "DTSTART;VALUE=DATE:20261014" in ics, ics[:400]
     assert "DTSTART;VALUE=DATE:20261010" in ics, "falta el resumen del sábado"
-    assert "TRIGGER:PT0S" in ics, "el resumen avisa al empezar el sábado"
+    assert "TRIGGER:PT8H" in ics, "el resumen avisa a las 8:00 AM del sábado"
     assert "TRIGGER:-P1D" in ics, "las evaluaciones avisan 1 día antes"
     assert "X-WR-CALNAME:Evaluacion Scuola" in ics, \
         "el calendario debe llamarse «Evaluacion Scuola»"

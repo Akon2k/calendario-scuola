@@ -131,8 +131,8 @@ def texto_ics(registros: list[dict], recordatorio_min: int | None = 1440) -> str
             "TRANSP:TRANSPARENT",
         ]
         if recordatorio_min:
-            # El resumen se avisa al empezar el sábado; las evaluaciones, 1 día antes.
-            disparo = ("PT0S" if registro.get("TIPO") == TIPO_RESUMEN
+            # El resumen se avisa a las 8:00 AM del sábado; las evaluaciones, 1 día antes.
+            disparo = ("PT8H" if registro.get("TIPO") == TIPO_RESUMEN
                        else _trigger(int(recordatorio_min)))
             lineas += [
                 "BEGIN:VALARM",

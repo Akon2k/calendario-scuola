@@ -231,18 +231,77 @@ def _aplicar(cita, registro: dict, fecha: date, asunto: str,
              recordatorio_min: int | None) -> bool:
     """Escribe los datos en la cita. Devuelve True si hubo cambios."""
     cambios = False
+    es_resumen = registro.get("TIPO") == TIPO_RESUMEN
 
-    if cita.Start.date() != fecha:
-        cita.Start = datetime(fecha.year, fecha.month, fecha.day)
-        cambios = True
-    fin = fecha + timedelta(days=1)
-    if cita.End.date() != fin:
-        cita.End = datetime(fin.year, fin.month, fin.day)
-        cambios = True
+    if es_resumen:
+        # El resumen semanal es a las 08:00 AM del sábado (no a medianoche),
+        # con recordatorio de 0 minutos para que Outlook avise exactamente a las 8:00 AM.
+        try:
+            inicio_local = cita.Start.astimezone()
+            necesita_inicio = (
+                inicio_local.date() != fecha
+                or inicio_local.hour != 8
+                or inicio_local.minute != 0
+            )
+        except Exception:
+            necesita_inicio = True
 
-    if not cita.AllDayEvent:
-        cita.AllDayEvent = True
-        cambios = True
+        if necesita_inicio:
+            cita.Start = datetime(fecha.year, fecha.month, fecha.day, 8, 0, 0)
+            cambios = True
+
+        try:
+            fin_local = cita.End.astimezone()
+            necesita_fin = (
+                fin_local.date() != fecha
+                or fin_local.hour != 9
+                or fin_local.minute != 0
+            )
+        except Exception:
+            necesita_fin = True
+
+        if necesita_fin:
+            cita.End = datetime(fecha.year, fecha.month, fecha.day, 9, 0, 0)
+            cambios = True
+
+        if cita.AllDayEvent:
+            cita.AllDayEvent = False
+            cambios = True
+
+        if recordatorio_min is not None:
+            if not cita.ReminderSet:
+                cita.ReminderSet = True
+                cambios = True
+            if cita.ReminderMinutesBeforeStart != 0:
+                cita.ReminderMinutesBeforeStart = 0
+                cambios = True
+        elif cita.ReminderSet:
+            cita.ReminderSet = False
+            cambios = True
+    else:
+        if cita.Start.date() != fecha:
+            cita.Start = datetime(fecha.year, fecha.month, fecha.day)
+            cambios = True
+        fin = fecha + timedelta(days=1)
+        if cita.End.date() != fin:
+            cita.End = datetime(fin.year, fin.month, fin.day)
+            cambios = True
+
+        if not cita.AllDayEvent:
+            cita.AllDayEvent = True
+            cambios = True
+
+        if recordatorio_min:
+            if not cita.ReminderSet:
+                cita.ReminderSet = True
+                cambios = True
+            if cita.ReminderMinutesBeforeStart != int(recordatorio_min):
+                cita.ReminderMinutesBeforeStart = int(recordatorio_min)
+                cambios = True
+        elif cita.ReminderSet:
+            cita.ReminderSet = False
+            cambios = True
+
     if cita.BusyStatus != OL_FREE:
         cita.BusyStatus = OL_FREE
         cambios = True
@@ -257,17 +316,6 @@ def _aplicar(cita, registro: dict, fecha: date, asunto: str,
     cuerpo = _cuerpo(registro)
     if not _mismo_cuerpo(getattr(cita, "Body", ""), cuerpo):
         cita.Body = cuerpo
-        cambios = True
-
-    if recordatorio_min:
-        if not cita.ReminderSet:
-            cita.ReminderSet = True
-            cambios = True
-        if cita.ReminderMinutesBeforeStart != int(recordatorio_min):
-            cita.ReminderMinutesBeforeStart = int(recordatorio_min)
-            cambios = True
-    elif cita.ReminderSet:
-        cita.ReminderSet = False
         cambios = True
 
     if cambios:
