@@ -284,7 +284,9 @@ try {
   intervaloReloj.fn();
   if (porId['clima-hora'].textContent !== '00:00') fallo('el reloj no cambió correctamente al siguiente día');
   if (!html.includes('.minutos') || !html.includes('--rojo')) fallo('falta el estilo rojo para los minutos del reloj');
+  if (!html.includes('.horas') || !html.includes('font-weight: 700')) fallo('la hora debe ir en negrita');
   if (porId['clima-minutos'].textContent !== '00') fallo('el minutero no se actualizó');
+  if (porId['clima-horas'].textContent !== '00') fallo('la hora no se actualizó');
 } finally { globalThis.Date = FechaReal; }
 eventoVentana('focus');
 if (consultasClima.length + consultasNombreLugar.length !== consultasAntesDelReloj)

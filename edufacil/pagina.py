@@ -105,10 +105,11 @@ _PLANTILLA = r"""<!DOCTYPE html>
   #clima .hora {
     grid-column: 1; grid-row: 1 / 3; display: flex; align-items: center; justify-content: center;
     margin: 0; padding: 0 8px 0 2px; border-right: 1px solid var(--borde);
-    font-size: 19px; color: #006b2b; white-space: nowrap; font-variant-numeric: tabular-nums;
+    font-size: 19px; color: var(--rojo, #cd212a); white-space: nowrap; font-variant-numeric: tabular-nums;
     height: 100%;
   }
-  #clima .minutos { color: var(--rojo, #cd212a); }
+  #clima .horas { font-weight: 700; }
+  #clima .minutos { font-weight: 400; }
   #clima-ubicacion {
     grid-column: 2; display: block; width: 100%; margin: 0; min-height: 24px;
     padding: 2px 4px; font-size: 10px; white-space: normal; overflow-wrap: anywhere;
@@ -428,7 +429,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
   </div>
   <div id="clima" role="status" aria-live="polite" title="Clima actual de Concepción">
     <span class="hora" aria-live="off">
-      <time id="clima-hora" title="Hora local de este dispositivo"><span id="clima-horas">--</span>:<span id="clima-minutos" class="minutos">--</span></time></span>
+      <time id="clima-hora" title="Hora local de este dispositivo"><span id="clima-horas" class="horas">--</span>:<span id="clima-minutos" class="minutos">--</span></time></span>
     <button id="clima-ubicacion" type="button"
       title="Usar mi ubicación con permiso; Open-Meteo y BigDataCloud reciben coordenadas aproximadas">
       <span class="ciudad" id="clima-ciudad">Mi ubicación</span>
