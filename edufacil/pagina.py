@@ -56,6 +56,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
     --texto: #111827;
     --suave: #6b7280;
     --verde: #008837;
+    --rojo: #cd212a;
   }
   * { box-sizing: border-box; }
   body {
@@ -107,6 +108,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
     font-size: 19px; color: #006b2b; white-space: nowrap; font-variant-numeric: tabular-nums;
     height: 100%;
   }
+  #clima .minutos { color: var(--rojo, #cd212a); }
   #clima-ubicacion {
     grid-column: 2; display: block; width: 100%; margin: 0; min-height: 24px;
     padding: 2px 4px; font-size: 10px; white-space: normal; overflow-wrap: anywhere;
@@ -426,7 +428,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
   </div>
   <div id="clima" role="status" aria-live="polite" title="Clima actual de Concepción">
     <span class="hora" aria-live="off">
-      <time id="clima-hora" title="Hora local de este dispositivo">--:--</time></span>
+      <time id="clima-hora" title="Hora local de este dispositivo"><span id="clima-horas">--</span>:<span id="clima-minutos" class="minutos">--</span></time></span>
     <button id="clima-ubicacion" type="button"
       title="Usar mi ubicación con permiso; Open-Meteo y BigDataCloud reciben coordenadas aproximadas">
       <span class="ciudad" id="clima-ciudad">Mi ubicación</span>
@@ -1931,13 +1933,19 @@ _PLANTILLA = r"""<!DOCTYPE html>
 
   function actualizarHoraClima() {
     var reloj = document.getElementById('clima-hora');
+    var elH = document.getElementById('clima-horas');
+    var elM = document.getElementById('clima-minutos');
     var ahora = new Date();
-    var hora = String(ahora.getHours()).padStart(2, '0') + ':' +
-               String(ahora.getMinutes()).padStart(2, '0');
-    if (reloj && reloj.textContent !== hora) {
+    var hh = String(ahora.getHours()).padStart(2, '0');
+    var mm = String(ahora.getMinutes()).padStart(2, '0');
+    var hora = hh + ':' + mm;
+    if (elH && elM) {
+      if (elH.textContent !== hh) elH.textContent = hh;
+      if (elM.textContent !== mm) elM.textContent = mm;
+    } else if (reloj && reloj.textContent !== hora) {
       reloj.textContent = hora;
-      reloj.dateTime = ahora.toISOString();
     }
+    if (reloj) reloj.dateTime = ahora.toISOString();
   }
 
   // La ubicación se pide al pulsar el botón y se recuerda en este navegador.

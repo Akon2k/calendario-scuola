@@ -18,7 +18,7 @@ class Elem {
     this.children = [];
     this.className = "";
     this.dataset = {};
-    this.textContent = "";
+    this._textContent = "";
     this.title = "";
     this.listeners = {};
     this._html = "";
@@ -27,6 +27,15 @@ class Elem {
       props: {},
       setProperty(k, v) { this.props[k] = v; },
     };
+  }
+  get textContent() {
+    if (this.children.length) {
+      return this.children.map(c => c.textContent || "").join("");
+    }
+    return this._textContent || "";
+  }
+  set textContent(v) {
+    this._textContent = String(v);
   }
   get id() { return this._id; }
   set id(v) { this._id = v; if (v) porId[v] = this; }   // getElementById por id
@@ -50,7 +59,8 @@ for (const id of ["datos", "ics-b64", "nube", "mes-actual", "rejilla", "detalle"
                   "pestanas", "tab-calendario", "tab-mensajes",
                   "cuenta-mensajes", "vista-calendario", "mensajes",
                   "mensajes-lista", "impresion-mes", "impresion-actividades",
-                  "clima", "clima-icono", "clima-temperatura", "clima-ciudad", "clima-ubicacion", "clima-hora", "clima-pronostico"]) {
+                  "clima", "clima-icono", "clima-temperatura", "clima-ciudad", "clima-ubicacion",
+                  "clima-hora", "clima-horas", "clima-minutos", "clima-pronostico"]) {
   const el = new Elem("div");
   el.id = id;
   porId[id] = el;
@@ -59,6 +69,13 @@ for (const id of ["datos", "ics-b64", "nube", "mes-actual", "rejilla", "detalle"
     if (!mm) throw new Error(`no encontré #${id}`);
     el.textContent = mm[1].trim();
   }
+}
+if (porId["clima-hora"] && porId["clima-horas"] && porId["clima-minutos"]) {
+  porId["clima-hora"].appendChild(porId["clima-horas"]);
+  const sep = new Elem("span");
+  sep.textContent = ":";
+  porId["clima-hora"].appendChild(sep);
+  porId["clima-hora"].appendChild(porId["clima-minutos"]);
 }
 
 // el DOM simulado no parsea el HTML: se copian los «hidden» de la maqueta
@@ -266,6 +283,8 @@ try {
   instante.setSeconds(60);
   intervaloReloj.fn();
   if (porId['clima-hora'].textContent !== '00:00') fallo('el reloj no cambió correctamente al siguiente día');
+  if (!html.includes('.minutos') || !html.includes('--rojo')) fallo('falta el estilo rojo para los minutos del reloj');
+  if (porId['clima-minutos'].textContent !== '00') fallo('el minutero no se actualizó');
 } finally { globalThis.Date = FechaReal; }
 eventoVentana('focus');
 if (consultasClima.length + consultasNombreLugar.length !== consultasAntesDelReloj)
