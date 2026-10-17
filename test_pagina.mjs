@@ -658,8 +658,9 @@ ok("instalar: " + porId["avisos-estado"].textContent);
 if (!html.includes('id="tab-calendario" class="activa"><svg class="icono"')
     || html.includes('&#128197; Calendario</button>'))
   fallo('Calendario debe usar un ícono simple, sin emoji de color');
-if (!html.includes('id="tab-mensajes" hidden>&#9993;&#65038; Mensajes'))
-  fallo('Mensajes debe usar un sobre normal, sin emoji de correo entrante');
+if (!html.includes('id="tab-mensajes" hidden><svg class="icono"')
+    || html.includes('&#9993;') || html.includes('&#128233;'))
+  fallo('Mensajes debe usar un sobre con el mismo tamaño y estilo vectorial que Calendario');
 if (/<p class="desde">/.test(html))
   fallo('Mensajes no debe mostrar la leyenda del inicio del período');
 const todoTexto = (el) => (el.textContent || "")

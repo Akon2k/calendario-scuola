@@ -401,7 +401,10 @@ _PLANTILLA = r"""<!DOCTYPE html>
     viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
     stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18"
     height="16" rx="2"/><path d="M7 3v4M17 3v4M3 11h18"/></svg> Calendario</button>
-  <button id="tab-mensajes" hidden>&#9993;&#65038; Mensajes<span class="cuenta"
+  <button id="tab-mensajes" hidden><svg class="icono" aria-hidden="true"
+    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+    stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20"
+    height="16" rx="2"/><path d="m22 7-10 7L2 7"/></svg> Mensajes<span class="cuenta"
     id="cuenta-mensajes"></span></button>
 </nav>
 
