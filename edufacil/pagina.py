@@ -271,8 +271,16 @@ _PLANTILLA = r"""<!DOCTYPE html>
     gap: 1px; padding: 3px 4px; border-radius: 6px; background: var(--dia-pronostico-fondo); min-width: 0;
   }
   .dia-pronostico .dia-nombre { font-weight: 600; color: var(--suave); font-size: 10px; line-height: 1.1; }
-  .dia-pronostico .dia-icono { font-size: 14px; line-height: 1.1; margin: 1px 0; }
+  .dia-pronostico .dia-icono {
+    font-size: 14px; line-height: 1.1; margin: 1px 0;
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", "Android Emoji", emoji, sans-serif;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .dia-pronostico .dia-icono svg { display: block; width: 16px; height: 16px; }
   .dia-pronostico .dia-temp { font-size: 9.5px; color: var(--texto); white-space: nowrap; line-height: 1.1; }
+  #clima-icono {
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", "Android Emoji", emoji, sans-serif;
+  }
   #clima .ciudad { display: block; font-size: 11px; color: var(--suave); }
   #clima .actual { grid-column: 2; display: block; margin: 1px 0; font-size: 16px; font-weight: 600; white-space: nowrap; color: var(--texto); }
   #clima .hora {
@@ -511,6 +519,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
     .dia-pronostico { padding: 2px 2px; }
     .dia-pronostico .dia-nombre { font-size: 9.5px; }
     .dia-pronostico .dia-icono { font-size: 13px; }
+    .dia-pronostico .dia-icono svg { width: 14px; height: 14px; }
     .dia-pronostico .dia-temp { font-size: 9px; }
     .sub { font-size: 12px; }
     .acciones { width: 100%; gap: 6px; }
@@ -2217,14 +2226,45 @@ _PLANTILLA = r"""<!DOCTYPE html>
   var versionClima = 0;
   function estadoDelClima(codigo, esDia) {
     if (codigo === 0) return [esDia ? '☀️' : '🌙', 'Despejado'];
-    if (codigo === 1 || codigo === 2) return [esDia ? '🌤️' : '☁️', 'Parcialmente nublado'];
+    if (codigo === 1 || codigo === 2) return [esDia ? '⛅' : '☁️', 'Parcialmente nublado'];
     if (codigo === 3) return ['☁️', 'Nublado'];
-    if (codigo === 45 || codigo === 48) return ['🌫️', 'Niebla'];
-    if ([51, 53, 55, 56, 57].indexOf(codigo) >= 0) return ['🌦️', 'Llovizna'];
-    if ([61, 63, 65, 66, 67, 80, 81, 82].indexOf(codigo) >= 0) return ['🌧️', 'Lluvia'];
-    if ([71, 73, 75, 77, 85, 86].indexOf(codigo) >= 0) return ['🌨️', 'Nieve'];
-    if ([95, 96, 99].indexOf(codigo) >= 0) return ['⛈️', 'Tormenta'];
+    if (codigo === 45 || codigo === 48) return ['🌁', 'Niebla'];
+    if ([51, 53, 55, 56, 57].indexOf(codigo) >= 0) return ['☔', 'Llovizna'];
+    if ([61, 63, 65, 66, 67, 80, 81, 82].indexOf(codigo) >= 0) return ['☔', 'Lluvia'];
+    if ([71, 73, 75, 77, 85, 86].indexOf(codigo) >= 0) return ['❄️', 'Nieve'];
+    if ([95, 96, 99].indexOf(codigo) >= 0) return ['⚡', 'Tormenta'];
     return ['🌡️', 'Tiempo actual'];
+  }
+
+  function svgClima(codigo, esDia) {
+    if (codigo === 0) {
+      if (esDia) {
+        return '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4" fill="#fbbf24"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>';
+      }
+      return '<svg viewBox="0 0 24 24" aria-hidden="true" fill="#fbbf24" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+    }
+    if (codigo === 1 || codigo === 2) {
+      return '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-linecap="round"><circle cx="12" cy="8" r="3" fill="#fbbf24" stroke="#f59e0b" stroke-width="1.5"/><path d="M12 2v2M4.93 4.93l1.41 1.41M19.07 4.93l-1.41 1.41" stroke="#f59e0b" stroke-width="1.5"/><path d="M7 19h10a4 4 0 0 0 0-8 6 6 0 0 0-11.6 1.8A3.5 3.5 0 0 0 7 19z" fill="#94a3b8" stroke="#64748b" stroke-width="1.5"/></svg>';
+    }
+    if (codigo === 3) {
+      return '<svg viewBox="0 0 24 24" aria-hidden="true" fill="#94a3b8" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"><path d="M17.5 19H7a4.5 4.5 0 0 1-.5-8.97 6 6 0 0 1 11.9 1.47A4 4 0 0 1 17.5 19z"/></svg>';
+    }
+    if (codigo === 45 || codigo === 48) {
+      return '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"><path d="M4 8h16M2 12h20M5 16h14M7 20h10"/></svg>';
+    }
+    if ([51, 53, 55, 56, 57].indexOf(codigo) >= 0) {
+      return '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-linecap="round"><path d="M17 15H7a4 4 0 0 1-.5-7.97 5.5 5.5 0 0 1 10.9 1.47A3.5 3.5 0 0 1 17 15z" fill="#94a3b8" stroke="#64748b" stroke-width="1.5"/><path d="M8 18v2M12 18v2M16 18v2" stroke="#38bdf8" stroke-width="2"/></svg>';
+    }
+    if ([61, 63, 65, 66, 67, 80, 81, 82].indexOf(codigo) >= 0) {
+      return '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-linecap="round"><path d="M17 14H7a4 4 0 0 1-.5-7.97 5.5 5.5 0 0 1 10.9 1.47A3.5 3.5 0 0 1 17 14z" fill="#64748b" stroke="#475569" stroke-width="1.5"/><path d="M8 17l-1 3M12 17l-1 3M16 17l-1 3" stroke="#0284c7" stroke-width="2"/></svg>';
+    }
+    if ([71, 73, 75, 77, 85, 86].indexOf(codigo) >= 0) {
+      return '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"><path d="M12 2v20M2 12h20M5 5l14 14M5 19L19 5"/></svg>';
+    }
+    if ([95, 96, 99].indexOf(codigo) >= 0) {
+      return '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-linecap="round"><path d="M17 13H7a4 4 0 0 1-.5-7.97 5.5 5.5 0 0 1 10.9 1.47A3.5 3.5 0 0 1 17 13z" fill="#475569" stroke="#334155" stroke-width="1.5"/><path d="M13 13l-3 4h3l-1 4 5-5h-3l1-3z" fill="#facc15" stroke="#eab308" stroke-width="1"/></svg>';
+    }
+    return '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/></svg>';
   }
 
   function cargarClima() {
@@ -2285,7 +2325,8 @@ _PLANTILLA = r"""<!DOCTYPE html>
 
               var icoEl = document.createElement('span');
               icoEl.className = 'dia-icono';
-              icoEl.textContent = estDia[0];
+              icoEl.setAttribute('aria-label', estDia[1]);
+              icoEl.innerHTML = svgClima(code, true);
               diaEl.appendChild(icoEl);
 
               var tempEl = document.createElement('span');
