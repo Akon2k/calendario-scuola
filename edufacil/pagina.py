@@ -81,7 +81,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
   .acciones { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; flex-basis: 100%; }
   #clima {
     flex: 0 1 auto; align-self: flex-start; padding: 6px 10px;
-    display: grid; grid-template-columns: minmax(85px, auto) auto minmax(0, 1fr);
+    display: grid; grid-template-columns: auto minmax(85px, auto) minmax(0, 1fr);
     column-gap: 8px; align-items: center;
     text-align: center; background: #fff; border: 1px solid var(--borde);
     border-radius: 10px; line-height: 1.25;
@@ -100,17 +100,17 @@ _PLANTILLA = r"""<!DOCTYPE html>
   .dia-pronostico .dia-icono { font-size: 14px; line-height: 1.1; margin: 1px 0; }
   .dia-pronostico .dia-temp { font-size: 9.5px; color: #1f2937; white-space: nowrap; line-height: 1.1; }
   #clima .ciudad { display: block; font-size: 11px; color: var(--suave); }
-  #clima .actual { grid-column: 1; display: block; margin: 1px 0; font-size: 16px; font-weight: 600; white-space: nowrap; }
+  #clima .actual { grid-column: 2; display: block; margin: 1px 0; font-size: 16px; font-weight: 600; white-space: nowrap; }
   #clima .hora {
-    grid-column: 2; grid-row: 1 / 4; display: flex; align-items: center; justify-content: center;
-    margin: 0; padding: 0 8px; border-left: 1px solid var(--borde);
+    grid-column: 1; grid-row: 1 / 4; display: flex; align-items: center; justify-content: center;
+    margin: 0; padding: 0 8px 0 2px; border-right: 1px solid var(--borde);
     font-size: 19px; color: #006b2b; white-space: nowrap; font-variant-numeric: tabular-nums;
     height: 100%;
   }
-  #clima a { grid-column: 1; color: var(--suave); font-size: 9px; text-decoration: none; }
+  #clima a { grid-column: 2; color: var(--suave); font-size: 9px; text-decoration: none; }
   #clima a:hover { text-decoration: underline; }
   #clima-ubicacion {
-    grid-column: 1; display: block; width: 100%; margin: 0; min-height: 24px;
+    grid-column: 2; display: block; width: 100%; margin: 0; min-height: 24px;
     padding: 2px 4px; font-size: 10px; white-space: normal; overflow-wrap: anywhere;
   }
   button {
@@ -328,10 +328,10 @@ _PLANTILLA = r"""<!DOCTYPE html>
     .marca .logo { width: 60px; height: 43px; }
     #clima {
       flex: 1 1 100%; width: 100%; margin: 2px 0; padding: 5px 8px;
-      grid-template-columns: minmax(75px, auto) auto minmax(0, 1fr); column-gap: 6px;
+      grid-template-columns: auto minmax(75px, auto) minmax(0, 1fr); column-gap: 6px;
     }
     #clima .actual { font-size: 15px; }
-    #clima .hora { font-size: 17px; padding: 0 6px; }
+    #clima .hora { font-size: 17px; padding: 0 6px 0 0; }
     #clima-pronostico { padding-left: 6px; gap: 3px; }
     .dia-pronostico { padding: 2px 2px; }
     .dia-pronostico .dia-nombre { font-size: 9.5px; }
@@ -427,14 +427,14 @@ _PLANTILLA = r"""<!DOCTYPE html>
     </div>
   </div>
   <div id="clima" role="status" aria-live="polite" title="Clima actual de Concepción">
+    <span class="hora" aria-live="off">
+      <time id="clima-hora" title="Hora local de este dispositivo">--:--</time></span>
     <button id="clima-ubicacion" type="button"
       title="Usar mi ubicación con permiso; Open-Meteo y BigDataCloud reciben coordenadas aproximadas">
       <span class="ciudad" id="clima-ciudad">Mi ubicación</span>
     </button>
     <span class="actual"><span id="clima-icono" aria-hidden="true">&#127777;</span>
       <span id="clima-temperatura">— °C</span></span>
-    <span class="hora" aria-live="off">
-      <time id="clima-hora" title="Hora local de este dispositivo">--:--</time></span>
     <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a>
     <div id="clima-pronostico" aria-label="Pronóstico para los próximos tres días"></div>
   </div>

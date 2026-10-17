@@ -274,8 +274,8 @@ ok('reloj junto al clima: hora local de 24 horas, cambio de día y actualizació
 const estiloWidget = (html.match(/#clima\s*\{[^}]*}/) || [])[0] || '';
 const estiloHora = (html.match(/#clima \.hora\s*\{[^}]*}/) || [])[0] || '';
 if (!/display:\s*grid/.test(estiloWidget) || !/grid-template-columns:/.test(estiloWidget)
-    || !/grid-column:\s*2/.test(estiloHora))
-  fallo('el widget debe ser horizontal, con clima a la izquierda y hora a la derecha');
+    || !/grid-column:\s*1/.test(estiloHora))
+  fallo('el widget debe ser horizontal, con hora a la izquierda y clima al lado');
 
 // la sección de instrucciones existe y el pie no nombra la carpeta de Outlook
 if (!/id="ayuda"/.test(html) || !html.includes("Instrucciones de uso"))
