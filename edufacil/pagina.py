@@ -80,35 +80,38 @@ _PLANTILLA = r"""<!DOCTYPE html>
   .sub span { display: inline-block; }
   .acciones { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; flex-basis: 100%; }
   #clima {
-    flex: 0 0 260px; align-self: flex-start; padding: 7px 11px;
-    display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px;
+    flex: 0 1 auto; align-self: flex-start; padding: 6px 10px;
+    display: grid; grid-template-columns: minmax(85px, auto) auto minmax(0, 1fr);
+    column-gap: 8px; align-items: center;
     text-align: center; background: #fff; border: 1px solid var(--borde);
-    border-radius: 10px; line-height: 1.3;
+    border-radius: 10px; line-height: 1.25;
   }
   #clima-pronostico {
-    grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr);
-    gap: 4px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--borde);
-    text-align: center;
+    grid-column: 3; grid-row: 1 / 4; display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 4px; margin: 0; padding: 0 0 0 8px; border-left: 1px solid var(--borde);
+    text-align: center; align-items: stretch; height: 100%;
   }
+  #clima-pronostico:empty { display: none; }
   .dia-pronostico {
-    display: flex; flex-direction: column; align-items: center; gap: 2px;
-    padding: 3px 2px; border-radius: 6px; background: #f9fafb;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 1px; padding: 3px 4px; border-radius: 6px; background: #f9fafb; min-width: 0;
   }
-  .dia-pronostico .dia-nombre { font-weight: 600; color: var(--suave); font-size: 10.5px; }
+  .dia-pronostico .dia-nombre { font-weight: 600; color: var(--suave); font-size: 10px; line-height: 1.1; }
   .dia-pronostico .dia-icono { font-size: 14px; line-height: 1.1; margin: 1px 0; }
-  .dia-pronostico .dia-temp { font-size: 10px; color: #1f2937; white-space: nowrap; }
+  .dia-pronostico .dia-temp { font-size: 9.5px; color: #1f2937; white-space: nowrap; line-height: 1.1; }
   #clima .ciudad { display: block; font-size: 11px; color: var(--suave); }
-  #clima .actual { grid-column: 1; display: block; margin: 2px 0; font-size: 18px; font-weight: 600; }
+  #clima .actual { grid-column: 1; display: block; margin: 1px 0; font-size: 16px; font-weight: 600; white-space: nowrap; }
   #clima .hora {
-    grid-column: 2; grid-row: 1 / 4; display: flex; align-items: center; gap: 5px;
-    margin: 0; padding-left: 10px; border-left: 1px solid var(--borde);
-    font-size: 20px; color: #006b2b; white-space: nowrap; font-variant-numeric: tabular-nums;
+    grid-column: 2; grid-row: 1 / 4; display: flex; align-items: center; justify-content: center;
+    margin: 0; padding: 0 8px; border-left: 1px solid var(--borde);
+    font-size: 19px; color: #006b2b; white-space: nowrap; font-variant-numeric: tabular-nums;
+    height: 100%;
   }
   #clima a { grid-column: 1; color: var(--suave); font-size: 9px; text-decoration: none; }
   #clima a:hover { text-decoration: underline; }
   #clima-ubicacion {
-    grid-column: 1; display: block; width: 100%; margin: 0; min-height: 26px;
-    padding: 3px 2px; font-size: 10px; white-space: normal; overflow-wrap: anywhere;
+    grid-column: 1; display: block; width: 100%; margin: 0; min-height: 24px;
+    padding: 2px 4px; font-size: 10px; white-space: normal; overflow-wrap: anywhere;
   }
   button {
     font: inherit; padding: 7px 13px; border-radius: 8px;
@@ -266,6 +269,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
   }
   #pestanas button.activa .cuenta { background: #fff; color: #006b2b; }
   #pestanas .icono { width: 16px; height: 16px; vertical-align: -2px; }
+  #pestanas .experimental { font-size: 11px; font-weight: 500; opacity: .7; margin-left: 4px; }
   /* El calendario reserva su tamaño: mensajes ocupa exactamente ese espacio. */
   main[hidden] { display: grid; visibility: hidden; pointer-events: none; }
   #impresion-mes, #impresion-actividades { display: none; }
@@ -322,9 +326,17 @@ _PLANTILLA = r"""<!DOCTYPE html>
     h1 { font-size: 19px; }
     .marca { gap: 10px; flex-basis: 100%; }
     .marca .logo { width: 60px; height: 43px; }
-    #clima { flex: 1 1 100%; width: 100%; margin: 2px 0; padding: 7px 12px; }
-    #clima .actual { font-size: 16px; }
-    #clima .hora { font-size: 18px; }
+    #clima {
+      flex: 1 1 100%; width: 100%; margin: 2px 0; padding: 5px 8px;
+      grid-template-columns: minmax(75px, auto) auto minmax(0, 1fr); column-gap: 6px;
+    }
+    #clima .actual { font-size: 15px; }
+    #clima .hora { font-size: 17px; padding: 0 6px; }
+    #clima-pronostico { padding-left: 6px; gap: 3px; }
+    .dia-pronostico { padding: 2px 2px; }
+    .dia-pronostico .dia-nombre { font-size: 9.5px; }
+    .dia-pronostico .dia-icono { font-size: 13px; }
+    .dia-pronostico .dia-temp { font-size: 9px; }
     .sub { font-size: 12px; }
     .acciones { width: 100%; gap: 6px; }
     .acciones .primario {
@@ -450,7 +462,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
   <button id="tab-mensajes" hidden><svg class="icono" aria-hidden="true"
     viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
     stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20"
-    height="16" rx="2"/><path d="m22 7-10 7L2 7"/></svg> Mensajes<span class="cuenta"
+    height="16" rx="2"/><path d="m22 7-10 7L2 7"/></svg> Mensajes <span class="experimental">(Experimental)</span><span class="cuenta"
     id="cuenta-mensajes"></span></button>
 </nav>
 
@@ -1550,12 +1562,28 @@ _PLANTILLA = r"""<!DOCTYPE html>
     nav.serviceWorker.register('sw.js').catch(function () {});
   }
 
-  if (btnInstalar && enApp) btnInstalar.hidden = true;
+  if (btnInstalar && (enApp || almacenar('edufacil-app-instalada') === '1')) {
+    btnInstalar.hidden = true;
+  }
+  if (nav && nav.getInstalledRelatedApps) {
+    nav.getInstalledRelatedApps().then(function (apps) {
+      if (apps && apps.length > 0) {
+        if (btnInstalar) btnInstalar.hidden = true;
+        almacenar('edufacil-app-instalada', '1');
+      }
+    }).catch(function () {});
+  }
   if (window.addEventListener) {
     window.addEventListener('beforeinstallprompt', function (ev) {
       ev.preventDefault();            // no salta el banner: esperamos al botón
       pwaPrompt = ev;
-      if (btnInstalar) btnInstalar.hidden = false;
+      almacenar('edufacil-app-instalada', null);
+      if (btnInstalar && !enApp) btnInstalar.hidden = false;
+    });
+    window.addEventListener('appinstalled', function () {
+      pwaPrompt = null;
+      if (btnInstalar) btnInstalar.hidden = true;
+      almacenar('edufacil-app-instalada', '1');
     });
   }
   if (btnInstalar) {
@@ -1564,7 +1592,32 @@ _PLANTILLA = r"""<!DOCTYPE html>
         var p = pwaPrompt;
         pwaPrompt = null;
         p.prompt();
-        if (p.userChoice && p.userChoice.catch) p.userChoice.catch(function () {});
+        if (p.userChoice && p.userChoice.catch) {
+          p.userChoice.then(function (choice) {
+            if (choice && choice.outcome === 'accepted') {
+              if (btnInstalar) btnInstalar.hidden = true;
+              almacenar('edufacil-app-instalada', '1');
+            }
+          }).catch(function () {});
+        }
+        return;
+      }
+      if (nav && nav.getInstalledRelatedApps) {
+        nav.getInstalledRelatedApps().then(function (apps) {
+          if (apps && apps.length > 0) {
+            if (btnInstalar) btnInstalar.hidden = true;
+            almacenar('edufacil-app-instalada', '1');
+            msgAvisos('✓ La aplicación ya está instalada en tu teléfono.');
+            return;
+          }
+          msgAvisos(esIos
+            ? 'iPhone: toca Compartir → «Agregar a pantalla de inicio».'
+            : 'Elige «Instalar aplicación» en el menú del navegador.');
+        }).catch(function () {
+          msgAvisos(esIos
+            ? 'iPhone: toca Compartir → «Agregar a pantalla de inicio».'
+            : 'Elige «Instalar aplicación» en el menú del navegador.');
+        });
         return;
       }
       msgAvisos(esIos
