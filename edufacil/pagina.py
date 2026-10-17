@@ -87,7 +87,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
     border-radius: 10px; line-height: 1.25;
   }
   #clima-pronostico {
-    grid-column: 3; grid-row: 1 / 4; display: grid; grid-template-columns: repeat(3, 1fr);
+    grid-column: 3; grid-row: 1 / 3; display: grid; grid-template-columns: repeat(3, 1fr);
     gap: 4px; margin: 0; padding: 0 0 0 8px; border-left: 1px solid var(--borde);
     text-align: center; align-items: stretch; height: 100%;
   }
@@ -102,13 +102,11 @@ _PLANTILLA = r"""<!DOCTYPE html>
   #clima .ciudad { display: block; font-size: 11px; color: var(--suave); }
   #clima .actual { grid-column: 2; display: block; margin: 1px 0; font-size: 16px; font-weight: 600; white-space: nowrap; }
   #clima .hora {
-    grid-column: 1; grid-row: 1 / 4; display: flex; align-items: center; justify-content: center;
+    grid-column: 1; grid-row: 1 / 3; display: flex; align-items: center; justify-content: center;
     margin: 0; padding: 0 8px 0 2px; border-right: 1px solid var(--borde);
     font-size: 19px; color: #006b2b; white-space: nowrap; font-variant-numeric: tabular-nums;
     height: 100%;
   }
-  #clima a { grid-column: 2; color: var(--suave); font-size: 9px; text-decoration: none; }
-  #clima a:hover { text-decoration: underline; }
   #clima-ubicacion {
     grid-column: 2; display: block; width: 100%; margin: 0; min-height: 24px;
     padding: 2px 4px; font-size: 10px; white-space: normal; overflow-wrap: anywhere;
@@ -435,7 +433,6 @@ _PLANTILLA = r"""<!DOCTYPE html>
     </button>
     <span class="actual"><span id="clima-icono" aria-hidden="true">&#127777;</span>
       <span id="clima-temperatura">— °C</span></span>
-    <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a>
     <div id="clima-pronostico" aria-label="Pronóstico para los próximos tres días"></div>
   </div>
   <div class="acciones">
