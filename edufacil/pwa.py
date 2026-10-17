@@ -63,7 +63,7 @@ def texto_sw() -> str:
    - Otros dominios (Supabase): nunca se tocan, van directo a la red.
    - push: muestra el aviso que envía avisos.py (sábado o cambios). */
 'use strict';
-const CACHE = 'calendario-v1';
+const CACHE = 'calendario-v2';
 const ESTATICOS = ['./', './manifest.webmanifest', './icon-192.png',
                    './icon-512.png', './icon-maskable-512.png',
                    './apple-touch-icon.png'];
@@ -94,7 +94,7 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   if (new URL(req.url).origin !== self.location.origin) return;
-  if (req.mode === 'navigate') {
+  if (req.mode === 'navigate' || req.url.includes('manifest.webmanifest')) {
     e.respondWith(fetch(req).then(guardar)
       .catch(() => caches.match(req).then((m) => m || caches.match('./'))));
     return;
