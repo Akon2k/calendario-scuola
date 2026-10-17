@@ -30,7 +30,7 @@ def texto_manifest() -> str:
     """El `manifest.webmanifest` como texto (rutas relativas al HTML)."""
     datos = {
         "name": NOMBRE,
-        "short_name": "Calendario Eva",
+        "short_name": "Calendario Scuola",
         "description": "Evaluaciones de la Scuola Italiana: el calendario "
                        "completo, el resumen de los sábados y los avisos "
                        "de cambios.",

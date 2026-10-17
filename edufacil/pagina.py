@@ -49,7 +49,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Calendario Eva">
+<meta name="apple-mobile-web-app-title" content="Calendario Scuola">
 <style>
   :root {
     --borde: #e5e7eb;
