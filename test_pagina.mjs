@@ -18,6 +18,7 @@ class Elem {
     this.children = [];
     this.className = "";
     this.dataset = {};
+    this.attributes = {};
     this._textContent = "";
     this.title = "";
     this.listeners = {};
@@ -27,6 +28,23 @@ class Elem {
       props: {},
       setProperty(k, v) { this.props[k] = v; },
     };
+  }
+  setAttribute(k, v) {
+    this.attributes[k] = String(v);
+    if (k === "id") this.id = v;
+    if (k === "title") this.title = v;
+    if (k.startsWith("data-")) {
+      const prop = k.slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+      this.dataset[prop] = String(v);
+    }
+  }
+  getAttribute(k) { return this.attributes[k] || (k === "id" ? this.id : null); }
+  removeAttribute(k) {
+    delete this.attributes[k];
+    if (k.startsWith("data-")) {
+      const prop = k.slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+      delete this.dataset[prop];
+    }
   }
   get textContent() {
     if (this.children.length) {
@@ -52,7 +70,7 @@ class Elem {
 }
 
 for (const id of ["datos", "ics-b64", "nube", "mes-actual", "rejilla", "detalle",
-                  "leyenda", "anterior", "siguiente", "hoy", "imprimir",
+                  "leyenda", "anterior", "siguiente", "hoy", "tema", "imprimir",
                   "descargar", "nuevo", "nube-estado", "modal", "m-titulo",
                   "m-autor", "m-campos", "m-error", "m-cancelar", "m-guardar",
                   "instalar", "avisos", "probar", "avisos-estado",
@@ -83,16 +101,28 @@ porId["tab-mensajes"].hidden = /<button id="tab-mensajes"[^>]*hidden/.test(html)
 porId["mensajes"].hidden = /<section id="mensajes"[^>]*hidden/.test(html);
 
 let descargado = null;
+const metaThemeColor = new Elem("meta");
+metaThemeColor.setAttribute("name", "theme-color");
+metaThemeColor.setAttribute("content", "#2563eb");
+const docEl = new Elem("html");
+
 globalThis.document = {
+  documentElement: docEl,
   getElementById: (id) => porId[id],
   createElement: (tag) => new Elem(tag),
   createTextNode: (t) => ({ nodeValue: t }),
+  querySelector: (sel) => {
+    if (sel === 'meta[name="theme-color"]') return metaThemeColor;
+    return null;
+  },
   body: new Elem("body"),
 };
 let impresiones = 0;
 const eventosVentana = {};
 const intervalos = [];
 const almacenamientoMemoria = new Map();
+let mediaQueryOscuroMatches = false;
+const mediaQueryListeners = [];
 globalThis.window = {
   print: () => { impresiones++; },
   addEventListener: (tipo, fn) => { (eventosVentana[tipo] ||= []).push(fn); },
@@ -103,7 +133,15 @@ globalThis.window = {
     removeItem: (k) => { almacenamientoMemoria.delete(k); },
     clear: () => { almacenamientoMemoria.clear(); },
   },
+  matchMedia: (query) => ({
+    matches: query.includes("dark") ? mediaQueryOscuroMatches : false,
+    addEventListener: (tipo, fn) => { mediaQueryListeners.push(fn); },
+    addListener: (fn) => { mediaQueryListeners.push(fn); },
+    removeEventListener: () => {},
+    removeListener: () => {},
+  }),
 };
+globalThis.localStorage = globalThis.window.localStorage;
 const eventoVentana = tipo => (eventosVentana[tipo] || []).forEach(fn => fn());
 globalThis.URL = {
   createObjectURL: (blob) => { descargado = blob; return "blob:falsa"; },
@@ -786,5 +824,29 @@ const totalTrasError = porId['mensajes-lista'].children.reduce((acc, m) =>
 if (totalTrasError !== 501)
   fallo('un error de red borró los mensajes que ya se habían cargado');
 ok('mensajes: período completo paginado (501), orden estable y sin borrar la vista ante fallos de red');
+
+// Modo oscuro / claro
+if (porId['tema'].textContent !== '🌙' || docEl.getAttribute('data-tema') !== 'claro')
+  fallo('el tema inicial por defecto debe ser claro');
+porId['tema'].click();
+if (docEl.getAttribute('data-tema') !== 'oscuro' || porId['tema'].textContent !== '☀️'
+    || metaThemeColor.getAttribute('content') !== '#0f172a'
+    || almacenamientoMemoria.get('edufacil-tema') !== 'oscuro')
+  fallo('al hacer clic en tema no cambió a modo oscuro o no persistió en almacenamiento');
+porId['tema'].click();
+if (docEl.getAttribute('data-tema') !== 'claro' || porId['tema'].textContent !== '🌙'
+    || metaThemeColor.getAttribute('content') !== '#2563eb'
+    || almacenamientoMemoria.get('edufacil-tema') !== 'claro')
+  fallo('al volver a hacer clic en tema no volvió a claro');
+almacenamientoMemoria.delete('edufacil-tema');
+mediaQueryOscuroMatches = true;
+mediaQueryListeners.forEach(fn => fn({ matches: true }));
+if (docEl.getAttribute('data-tema') !== 'oscuro' || porId['tema'].textContent !== '☀️')
+  fallo('sin preferencia manual debe reaccionar a cambio del sistema a oscuro');
+mediaQueryOscuroMatches = false;
+mediaQueryListeners.forEach(fn => fn({ matches: false }));
+if (docEl.getAttribute('data-tema') !== 'claro' || porId['tema'].textContent !== '🌙')
+  fallo('sin preferencia manual debe reaccionar a cambio del sistema a claro');
+ok('modo oscuro: botón manual (🌙/☀️), persistencia en localStorage y detección automática');
 
 console.log("\nTODO OK");
