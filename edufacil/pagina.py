@@ -450,6 +450,10 @@ _PLANTILLA = r"""<!DOCTYPE html>
     font-size: 11.5px; font-weight: 700; margin-left: 7px;
     background: var(--chip-cuenta-fondo); color: var(--chip-cuenta-texto); border-radius: 999px; padding: 1px 8px;
   }
+  #pestanas .cuenta:empty,
+  #pestanas .cuenta[hidden] {
+    display: none;
+  }
   #pestanas button.activa .cuenta { background: var(--tarjeta); color: var(--pestana-activa-texto); }
   #pestanas .icono { width: 16px; height: 16px; vertical-align: -2px; }
   #pestanas .experimental { font-size: 11px; font-weight: 500; opacity: .7; margin-left: 4px; }
@@ -497,6 +501,22 @@ _PLANTILLA = r"""<!DOCTYPE html>
   .grid-campos .ancho { grid-column: 1 / -1; }
   .pie-modal { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
   .modal-error { color: #b91c1c; font-size: 13px; margin: 8px 0 0; min-height: 18px; }
+  /* modal específico para editar el resumen semanal */
+  #modal.modal-modo-resumen .panel-modal {
+    display: flex; flex-direction: column;
+    height: 85vh; max-height: 85vh;
+  }
+  #modal.modal-modo-resumen #m-campos {
+    flex: 1; display: flex; flex-direction: column;
+    min-height: 0; overflow-y: auto;
+  }
+  #modal.modal-modo-resumen .campo-resumen-detalle {
+    flex: 1; display: flex; flex-direction: column; min-height: 180px;
+  }
+  #modal.modal-modo-resumen .campo-resumen-detalle textarea {
+    flex: 1; min-height: 160px; height: 100%; resize: none;
+    font-size: 14.5px; line-height: 1.5;
+  }
   /* ---------- teléfono (iPhone 13 ≈ 390px, Moto Edge 60 Pro ≈ 412-456px) ------
      Todo cabe en pantalla: sin scroll horizontal y con objetivos táctiles. */
   @media (max-width: 640px) {
@@ -559,7 +579,13 @@ _PLANTILLA = r"""<!DOCTYPE html>
       width: 100%; border-radius: 16px 16px 0 0; max-height: 94vh;
       padding: 16px 16px max(16px, env(safe-area-inset-bottom));
     }
+    #modal.modal-modo-resumen .panel-modal {
+      height: 90vh; height: 90dvh; max-height: 94vh;
+      border-radius: 16px 16px 0 0;
+      padding-bottom: max(16px, env(safe-area-inset-bottom));
+    }
     .campo input, .campo textarea, .campo select { font-size: 16px; }
+    #modal.modal-modo-resumen .campo-resumen-detalle textarea { font-size: 16px; }
     .pie-modal {
       position: sticky; bottom: 0; background: var(--tarjeta);
       margin-top: 8px; padding-top: 10px;
@@ -1659,7 +1685,10 @@ _PLANTILLA = r"""<!DOCTYPE html>
 
   function cerrarModal() {
     var modal = document.getElementById('modal');
-    if (modal) modal.hidden = true;
+    if (modal) {
+      modal.hidden = true;
+      modal.className = '';
+    }
     modo = null;
     origen = null;
     errorModal('');
@@ -1684,10 +1713,17 @@ _PLANTILLA = r"""<!DOCTYPE html>
 
     cont.innerHTML = '';
     camposUsados().forEach(function (u) {
+      var clase = 'campo' + (u.ancho || u.tipo === 'textarea' ? ' ancho' : '');
+      if (modo === 'resumen' && u.c === 'CONTENIDO') clase += ' campo-resumen-detalle';
       var label = document.createElement('label');
-      label.className = 'campo' + (u.ancho || u.tipo === 'textarea' ? ' ancho' : '');
+      label.className = clase;
       var titulo2 = document.createElement('span');
-      titulo2.textContent = u.et;
+      var etiqueta = u.et;
+      if (modo === 'resumen') {
+        if (u.c === 'EVALUACION') etiqueta = 'Título del resumen';
+        else if (u.c === 'CONTENIDO') etiqueta = 'Detalle de la semana (un ítem por línea)';
+      }
+      titulo2.textContent = etiqueta;
       label.appendChild(titulo2);
 
       var input;
@@ -1706,6 +1742,13 @@ _PLANTILLA = r"""<!DOCTYPE html>
         if (u.tipo) input.type = u.tipo;
       }
       input.id = 'm-' + u.c;
+      if (modo === 'resumen') {
+        if (u.c === 'EVALUACION') {
+          input.placeholder = 'ej: 19, 21 y 23 oct · 3 evaluaciones';
+        } else if (u.c === 'CONTENIDO') {
+          input.placeholder = 'Detalle de las evaluaciones de la próxima semana';
+        }
+      }
       if (modo === 'nuevo' && u.c === 'FECHA') input.value = elegida;
       else if (origen) input.value = origen[u.s] || '';
       label.appendChild(input);
@@ -1713,7 +1756,10 @@ _PLANTILLA = r"""<!DOCTYPE html>
     });
 
     var modal = document.getElementById('modal');
-    if (modal) modal.hidden = false;
+    if (modal) {
+      modal.className = (modo === 'resumen') ? 'modal-modo-resumen' : '';
+      modal.hidden = false;
+    }
   }
 
   function leerCampos() {
@@ -2037,11 +2083,76 @@ _PLANTILLA = r"""<!DOCTYPE html>
 
   // ---- comunicados generales, desde el 1 de septiembre de 2026 en Chile ----
   var MENSAJES_DESDE = new Date('2026-09-01T00:00:00-04:00');
+  var CLAVE_LEIDOS = 'edufacil-mensajes-leidos';
+  var ultimosMensajes = [];
+
   function fechaLarga(iso) {
     var f = new Date(iso);
     if (isNaN(f.getTime())) return '';
     return DIAS[f.getDay()] + ' ' + f.getDate() + ' de '
          + MESES[f.getMonth()].toLowerCase();
+  }
+
+  function idMensaje(m) {
+    return (m && m.id) ? String(m.id) : (m ? String(m.fecha || '') + '|' + String(m.asunto || '') : '');
+  }
+
+  function leerMensajesLeidos() {
+    try {
+      var guardado = almacenar(CLAVE_LEIDOS);
+      if (guardado) {
+        var parsed = JSON.parse(guardado);
+        if (parsed && typeof parsed === 'object') return parsed;
+      }
+    } catch (e) {}
+    return {};
+  }
+
+  function marcarMensajesLeidos(filas) {
+    if (!Array.isArray(filas) || !filas.length) return;
+    var mapa = leerMensajesLeidos();
+    var cambio = false;
+    filas.forEach(function (m) {
+      var id = idMensaje(m);
+      if (id && !mapa[id]) {
+        mapa[id] = 1;
+        cambio = true;
+      }
+    });
+    if (cambio) {
+      try {
+        almacenar(CLAVE_LEIDOS, JSON.stringify(mapa));
+      } catch (e) {}
+    }
+  }
+
+  function refrescarCuentaMensajes() {
+    var cuenta = document.getElementById('cuenta-mensajes');
+    if (!cuenta) return;
+    if (!ultimosMensajes.length) {
+      cuenta.textContent = '';
+      cuenta.hidden = true;
+      return;
+    }
+    if (vistaActiva === 'mensajes') {
+      marcarMensajesLeidos(ultimosMensajes);
+      cuenta.textContent = '';
+      cuenta.hidden = true;
+      return;
+    }
+    var mapa = leerMensajesLeidos();
+    var noLeidos = 0;
+    ultimosMensajes.forEach(function (m) {
+      var id = idMensaje(m);
+      if (id && !mapa[id]) noLeidos++;
+    });
+    if (noLeidos > 0) {
+      cuenta.textContent = String(noLeidos);
+      cuenta.hidden = false;
+    } else {
+      cuenta.textContent = '';
+      cuenta.hidden = true;
+    }
   }
 
   function pintarMensajes(filas) {
@@ -2053,6 +2164,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
       var fecha = new Date(m.fecha).getTime();
       return fecha >= MENSAJES_DESDE.getTime() && fecha <= hasta;
     });
+    ultimosMensajes = filas.slice();
     lista.innerHTML = '';
     if (!filas.length) {
       document.getElementById('tab-mensajes').hidden = true;
@@ -2151,11 +2263,8 @@ _PLANTILLA = r"""<!DOCTYPE html>
       lista.appendChild(det);
     });
     var pestana2 = document.getElementById('tab-mensajes');
-    if (pestana2) {
-      pestana2.hidden = false;
-      var cuenta = document.getElementById('cuenta-mensajes');
-      if (cuenta) cuenta.textContent = String(filas.length);
-    }
+    if (pestana2) pestana2.hidden = false;
+    refrescarCuentaMensajes();
     pestana(typeof location !== 'undefined' && location.hash === '#mensajes'
             ? 'mensajes' : vistaActiva);
   }
@@ -2429,6 +2538,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
     if (men) men.hidden = (nombre !== 'mensajes');
     if (tcal) tcal.className = (nombre === 'calendario') ? 'activa' : '';
     if (tmen) tmen.className = (nombre === 'mensajes') ? 'activa' : '';
+    refrescarCuentaMensajes();
   }
 
   function alCambiarPestana(ev) {
