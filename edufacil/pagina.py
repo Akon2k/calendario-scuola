@@ -110,13 +110,6 @@ _PLANTILLA = r"""<!DOCTYPE html>
         document.documentElement.setAttribute('data-tema', 'claro');
       }
     } catch (e) {}
-    try {
-      // Franja de marca bajo la barra de botones del Android instalado.
-      if (/Android/i.test(navigator.userAgent) && window.matchMedia
-          && window.matchMedia('(display-mode: standalone)').matches) {
-        document.documentElement.classList.add('app-android');
-      }
-    } catch (e) {}
   })();
 </script>
 <style>
@@ -292,19 +285,6 @@ _PLANTILLA = r"""<!DOCTYPE html>
     font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     color: var(--texto); background: var(--fondo);
     -webkit-text-size-adjust: 100%;
-  }
-  /* Chrome en Android abre la app instalada a pantalla completa y dibuja la
-     barra de botones encima de la página: elige los íconos en claro por el
-     verde del tema y, sobre el fondo gris, casi no se ven. Esta franja del
-     verde de marca detrás de la barra les devuelve el contraste. Fuera de la
-     app instalada (navegador normal, iPhone) no se activa. */
-  html.app-android body {
-    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
-  }
-  html.app-android body::after {
-    content: ""; position: fixed; left: 0; right: 0; bottom: 0;
-    height: calc(56px + env(safe-area-inset-bottom, 0px));
-    background: #008837; pointer-events: none; z-index: 0;
   }
   header {
     max-width: 1180px; margin: 0 auto; padding: 22px 0 14px;
@@ -676,8 +656,6 @@ _PLANTILLA = r"""<!DOCTYPE html>
   @media print {
     @page { size: A4 portrait; margin: 12mm; }
     body { background: #fff; padding: 0; font-size: 10pt; }
-    html.app-android body { padding: 0; }
-    html.app-android body::after { display: none; }
     header { padding: 0 0 8px; }
     h1 { font-size: 16pt; }
     .sub { font-size: 9pt; }
