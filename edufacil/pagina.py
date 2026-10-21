@@ -43,7 +43,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
 <meta name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Calendario de Evaluaciones - Prima Elementare</title>
-<meta name="theme-color" content="#2563eb">
+<meta name="theme-color" content="#008837">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1118,7 +1118,8 @@ _PLANTILLA = r"""<!DOCTYPE html>
     var salida = {}, porNombre = {};
     Object.keys(vistos).sort().forEach(function (a, i) {
       var nombre = nombreAsignatura(a);
-      salida[a] = porNombre[nombre] || (D.colores && D.colores[a]) ||
+      salida[a] = porNombre[nombre] ||
+                   (D.colores && (D.colores[a] || D.colores[nombre])) ||
                    (paleta.length ? paleta[i % paleta.length] : '#9ca3af');
       porNombre[nombre] = salida[a];
     });
@@ -1335,26 +1336,37 @@ _PLANTILLA = r"""<!DOCTYPE html>
     return barra;
   }
 
+  // Nombres cortos de las asignaturas oficiales. Sirven además para
+  // reconocerlas: quien agregue un evento desde la página puede escribir
+  // «MATEMÁTICAS» o «Músicas», y eso no debe abrir una entrada nueva en la
+  // leyenda ni robarle el color a la asignatura real.
+  var CORTOS = {
+    'ARTES VISUALES': 'Artes',
+    'CIENCIAS NATURALES': 'Ciencias',
+    'EDUCACIÓN FÍSICA Y SALUD': 'Ed. física',
+    'HISTORIA, GEOGRAFÍA Y CIENCIAS SOCIALES': 'Historia',
+    'IDIOMA EXTRANJERO (INGLÉS)': 'Inglés',
+    'IDIOMA EXTRANJERO (ITALIANO)': 'Italiano',
+    'LENGUAJE Y COMUNICACIÓN': 'Lenguaje',
+    'MATEMÁTICA': 'Matemática',
+    'MÚSICA': 'Música',
+    'TECNOLOGÍA': 'Tecnología'
+  };
+
   function nombreAsignatura(asig) {
-    return String(asig).trim().replace(/\s+/g, ' ').toUpperCase();
+    var nombre = String(asig).trim().replace(/\s+/g, ' ').toUpperCase();
+    if (CORTOS[nombre]) return nombre;
+    // Sólo se acepta la forma plural si el singular es una oficial: así
+    // «MATEMÁTICAS» cuenta como «MATEMÁTICA», pero un nombre desconocido
+    // cualquiera se muestra tal como lo escribió su autor.
+    var singular = nombre.slice(0, -1);
+    return (/S$/.test(nombre) && CORTOS[singular]) ? singular : nombre;
   }
 
   function pintarLeyenda() {
     var leyenda = document.getElementById('leyenda');
     leyenda.innerHTML = '';
     var vistos = {};
-    var cortos = {
-      'ARTES VISUALES': 'Artes',
-      'CIENCIAS NATURALES': 'Ciencias',
-      'EDUCACIÓN FÍSICA Y SALUD': 'Ed. física',
-      'HISTORIA, GEOGRAFÍA Y CIENCIAS SOCIALES': 'Historia',
-      'IDIOMA EXTRANJERO (INGLÉS)': 'Inglés',
-      'IDIOMA EXTRANJERO (ITALIANO)': 'Italiano',
-      'LENGUAJE Y COMUNICACIÓN': 'Lenguaje',
-      'MATEMÁTICA': 'Matemática',
-      'MÚSICA': 'Música',
-      'TECNOLOGÍA': 'Tecnología'
-    };
     Object.keys(D.colores).sort().forEach(function (asig) {
       var nombre = nombreAsignatura(asig);
       if (vistos[nombre]) return;
@@ -1363,9 +1375,9 @@ _PLANTILLA = r"""<!DOCTYPE html>
       span.className = 'punto';
       span.title = asig;
       var i = document.createElement('i');
-      i.style.background = D.colores[asig];
+      i.style.background = D.colores[nombre] || D.colores[asig];
       span.appendChild(i);
-      span.appendChild(document.createTextNode(cortos[nombre] || asig));
+      span.appendChild(document.createTextNode(CORTOS[nombre] || asig));
       leyenda.appendChild(span);
     });
   }
@@ -1482,7 +1494,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
       doc.setAttribute('data-tema', oscuro ? 'oscuro' : 'claro');
     }
     if (metaTema && metaTema.setAttribute) {
-      metaTema.setAttribute('content', oscuro ? '#0f172a' : '#2563eb');
+      metaTema.setAttribute('content', oscuro ? '#0f172a' : '#008837');
     }
     if (botonTema) {
       botonTema.textContent = oscuro ? '☀️' : '🌙';

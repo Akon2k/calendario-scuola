@@ -103,7 +103,7 @@ porId["mensajes"].hidden = /<section id="mensajes"[^>]*hidden/.test(html);
 let descargado = null;
 const metaThemeColor = new Elem("meta");
 metaThemeColor.setAttribute("name", "theme-color");
-metaThemeColor.setAttribute("content", "#2563eb");
+metaThemeColor.setAttribute("content", "#008837");
 const docEl = new Elem("html");
 
 globalThis.document = {
@@ -549,6 +549,41 @@ if (!nombresLeyenda.includes("Lenguaje") || nombresLeyenda.includes("LENGUAJE Y 
   fallo("la leyenda debe usar nombres cortos: " + nombresLeyenda);
 ok("leyenda centrada y compacta, nombres cortos y sin duplicados");
 
+// 5b) quien agrega un evento escribiendo «MATEMÁTICAS» no debe partir la
+//     leyenda en dos ni robarle el color a la asignatura real.
+const nombresBase = nombresLeyenda.slice();
+const colorMatematica = porId.leyenda.children
+  .find((el) => el.children[1].nodeValue === "Matemática").children[0].style.background;
+filasSim.push({
+  id: "plural-1", tipo: "nuevo", clave: "MATEMÁTICAS||SUB-EVALUACIÓN#1",
+  campos: { FECHA: LIBRE, ASIGNATURA: "MATEMÁTICAS", EVALUACION: "Dictado de prueba",
+            CONTENIDO: "", PROFESOR: "", NUMERO: "", ABREVIATURA: "",
+            COEFICIENTE: "", PONDERACION: "", TIPO: "Sub-evaluación" },
+  previo: {}, autor: "prueba plural", creado: "2026-10-19T12:00:00Z", token: "anon",
+});
+await globalThis.window.__calendario.recargar();
+const nombresPlural = porId.leyenda.children.map((el) => el.children[1].nodeValue);
+if (nombresPlural.length !== nombresBase.length
+    || nombresPlural.join("|") !== nombresBase.join("|"))
+  fallo("leyenda con «MATEMÁTICAS»: " + nombresPlural.join(" / "));
+const colorTrasAlta = porId.leyenda.children
+  .find((el) => el.children[1].nodeValue === "Matemática").children[0].style.background;
+if (colorTrasAlta !== colorMatematica)
+  fallo(`Matemática cambió de color: ${colorMatematica} -> ${colorTrasAlta}`);
+const celdaPlural = porId.rejilla.children.find((c) => c.dataset.fecha === LIBRE);
+const chipPlural = celdaPlural && celdaPlural.children
+  .find((c) => c.className === "ev");
+if (!chipPlural) fallo("no apareció el evento agregado en " + LIBRE);
+if (chipPlural.style.props["--c"] !== colorMatematica)
+  fallo("el chip de «MATEMÁTICAS» no usa el color de Matemática: "
+        + chipPlural.style.props["--c"]);
+filasSim.splice(filasSim.findIndex((f) => f.id === "plural-1"), 1);
+await globalThis.window.__calendario.recargar();
+const nombresRestaurados = porId.leyenda.children.map((el) => el.children[1].nodeValue);
+if (nombresRestaurados.join("|") !== nombresBase.join("|"))
+  fallo("no se restauró la leyenda al quitar la fila: " + nombresRestaurados.join(" / "));
+ok("leyenda: «MATEMÁTICAS» se agrupa con Matemática y hereda su color");
+
 // 6) descarga del .ics
 porId.descargar.click();
 if (!descargado) fallo("no se descargó nada");
@@ -670,7 +705,7 @@ ok("deshacer: se envía «anula» y el dato vuelve a ser el original");
 // 10) PWA: manifest, service worker, iconos y los botones de instalar/avisos
 if (!/<link rel="manifest" href="manifest\.webmanifest">/.test(html))
   fallo("falta <link rel=\"manifest\">");
-if (!/<meta name="theme-color" content="#2563eb">/.test(html))
+if (!/<meta name="theme-color" content="#008837">/.test(html))
   fallo("falta theme-color");
 if (!/<link rel="apple-touch-icon" href="apple-touch-icon\.png">/.test(html))
   fallo("falta apple-touch-icon");
@@ -835,7 +870,7 @@ if (docEl.getAttribute('data-tema') !== 'oscuro' || porId['tema'].textContent !=
   fallo('al hacer clic en tema no cambió a modo oscuro o no persistió en almacenamiento');
 porId['tema'].click();
 if (docEl.getAttribute('data-tema') !== 'claro' || porId['tema'].textContent !== '🌙'
-    || metaThemeColor.getAttribute('content') !== '#2563eb'
+    || metaThemeColor.getAttribute('content') !== '#008837'
     || almacenamientoMemoria.get('edufacil-tema') !== 'claro')
   fallo('al volver a hacer clic en tema no volvió a claro');
 almacenamientoMemoria.delete('edufacil-tema');

@@ -168,7 +168,7 @@ def main() -> int:
     # ---- PWA: manifest, service worker e iconos junto al HTML ----
     man = json.loads((salida / "manifest.webmanifest").read_text(encoding="utf-8"))
     assert man["display"] == "standalone" and len(man["icons"]) == 3, man
-    assert man["start_url"] == "./" and man["theme_color"] == "#2563eb", man
+    assert man["start_url"] == "./" and man["theme_color"] == "#008837", man
     sw = (salida / "sw.js").read_text(encoding="utf-8")
     for gancho in ("addEventListener('push'", "addEventListener('notificationclick'",
                    "addEventListener('fetch'"):

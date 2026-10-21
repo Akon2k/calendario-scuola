@@ -40,7 +40,7 @@ def texto_manifest() -> str:
         "scope": "./",
         "display": "standalone",
         "background_color": "#f3f4f6",
-        "theme_color": "#2563eb",
+        "theme_color": "#008837",
         "icons": [
             {"src": "icon-192.png", "sizes": "192x192",
              "type": "image/png", "purpose": "any"},
