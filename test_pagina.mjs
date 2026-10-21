@@ -845,8 +845,10 @@ const txt = meses.map(todoTexto).join(" ");
 if (!txt.includes("Excursión a Villa Grimaldi") || !txt.includes("Informe de notas"))
   fallo("faltan asuntos: " + txt);
 if (!txt.includes("Autorizar con firma.") || !txt.includes("2026-10-23"))
-  fallo("falta la acción o el evento: " + txt);
-ok("pestaña de mensajes: 2 comunicados con asunto, puntos, acción y evento");
+  fallo("falta la recomendación o el evento: " + txt);
+if (!txt.includes("Recomendación: Autorizar con firma."))
+  fallo("la recomendación debe llevar su etiqueta: " + txt);
+ok("pestaña de mensajes: 2 comunicados con asunto, puntos, recomendación y evento");
 
 porId["tab-calendario"].click();
 if (porId["vista-calendario"].hidden) fallo("volver al calendario no lo restauró");
