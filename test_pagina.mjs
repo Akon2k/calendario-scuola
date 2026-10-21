@@ -453,7 +453,7 @@ for (const ev of datos.eventos.filter((e) => e.f.startsWith("2026-10-"))) {
           + " esperado " + JSON.stringify(nombreDe(ev)));
   if (numero && !meta.includes("Número " + (esSub ? partes[0] : numero)))
     fallo("falta el Número el " + ev.f + ": " + meta);
-  if (esSub) {
+  if (esSub && numero && partes.length > 1) {
     subVistas++;
     if (!meta.includes("Sub-número " + partes[1]))
       fallo("la sub-evaluación debe listar el Sub-número el " + ev.f
@@ -535,12 +535,27 @@ porId.hoy.click();
 ok('imprimir: calendario del mes y lista por fecha, sin cambiar la pantalla y con limpieza al cancelar');
 
 // 5) leyenda
-const nAsignaturas = new Set(Object.keys(datos.colores).map(a =>
-  a.trim().replace(/\s+/g, ' ').toUpperCase())).size;
+// La paleta se reparte por nombre canónico: variantes como «MATEMÁTICAS» o
+// «Matemáticas» no deben abrir una entrada propia en la leyenda.
+const OFICIALES = ["ARTES VISUALES", "CIENCIAS NATURALES",
+  "EDUCACIÓN FÍSICA Y SALUD", "HISTORIA, GEOGRAFÍA Y CIENCIAS SOCIALES",
+  "IDIOMA EXTRANJERO (INGLÉS)", "IDIOMA EXTRANJERO (ITALIANO)",
+  "LENGUAJE Y COMUNICACIÓN", "MATEMÁTICA", "MÚSICA", "TECNOLOGÍA"];
+const canonica = (a) => {
+  const n = a.trim().replace(/\s+/g, " ").toUpperCase();
+  if (OFICIALES.includes(n)) return n;
+  return (n.endsWith("S") && OFICIALES.includes(n.slice(0, -1)))
+    ? n.slice(0, -1) : n;
+};
+const nAsignaturas = new Set(Object.keys(datos.colores).map(canonica)).size;
 if (!porId.leyenda.children.length
     || porId.leyenda.children.length !== nAsignaturas)
   fallo("leyenda: " + porId.leyenda.children.length + " de " + nAsignaturas);
 ok("leyenda: " + nAsignaturas + " asignaturas");
+if (datos.colores["MATEMÁTICAS"] && datos.colores["MATEMÁTICA"]
+    && datos.colores["MATEMÁTICAS"] !== datos.colores["MATEMÁTICA"])
+  fallo("«MATEMÁTICAS» debe compartir el color de «MATEMÁTICA»");
+ok("colores: las variantes de una asignatura comparten color");
 const reglaLeyenda = (html.match(/#leyenda\s*{[^}]*}/) || [])[0] || "";
 if (!/justify-content:\s*center/.test(reglaLeyenda))
   fallo("la leyenda debe quedar centrada: " + reglaLeyenda);
@@ -583,6 +598,34 @@ const nombresRestaurados = porId.leyenda.children.map((el) => el.children[1].nod
 if (nombresRestaurados.join("|") !== nombresBase.join("|"))
   fallo("no se restauró la leyenda al quitar la fila: " + nombresRestaurados.join(" / "));
 ok("leyenda: «MATEMÁTICAS» se agrupa con Matemática y hereda su color");
+
+// 5c) el alta que el scrapeo de la mañana ya incorporó no se agrega otra vez.
+//     Se simula con un evento existente: la nube todavía trae el texto previo
+//     a las correcciones, así que no coincide como «repetida» por evaluación.
+const yaIncluido = datos.eventos.find((e) => e.f.startsWith("2026-10-") && e.a);
+const chipsAntes = porId.rejilla.children
+  .find((c) => c.dataset.fecha === yaIncluido.f).children
+  .filter((c) => c.className === "ev").length;
+filasSim.push({
+  id: "baked-1", tipo: "nuevo", clave: yaIncluido.k,
+  campos: { FECHA: yaIncluido.f, ASIGNATURA: yaIncluido.a,
+            EVALUACION: yaIncluido.e + " (borrador)", CONTENIDO: "",
+            PROFESOR: "", NUMERO: "", ABREVIATURA: "", COEFICIENTE: "",
+            PONDERACION: "", TIPO: yaIncluido.t },
+  previo: {}, autor: "prueba duplicado", creado: "2026-10-19T12:30:00Z",
+  token: "anon",
+});
+await globalThis.window.__calendario.recargar();
+const chipsDespues = porId.rejilla.children
+  .find((c) => c.dataset.fecha === yaIncluido.f).children
+  .filter((c) => c.className === "ev").length;
+if (chipsDespues !== chipsAntes)
+  fallo(`el alta ya incluida se duplicó el ${yaIncluido.f}: `
+        + `${chipsAntes} -> ${chipsDespues}`);
+filasSim.splice(filasSim.findIndex((f) => f.id === "baked-1"), 1);
+await globalThis.window.__calendario.recargar();
+ok("altas: la que ya viene en los datos no se duplica ("
+   + chipsAntes + " eventos el " + yaIncluido.f + ")");
 
 // 6) descarga del .ics
 porId.descargar.click();

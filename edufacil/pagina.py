@@ -36,6 +36,52 @@ PALETA = [
     "#be123c", "#1d4ed8", "#15803d", "#b45309",
 ]
 
+# Nombres cortos de las asignaturas oficiales. Viajan también a la plantilla
+# ({{CORTOS}}) para que Python y la página reconozcan exactamente las mismas.
+NOMBRES_ASIGNATURA = {
+    "ARTES VISUALES": "Artes",
+    "CIENCIAS NATURALES": "Ciencias",
+    "EDUCACIÓN FÍSICA Y SALUD": "Ed. física",
+    "HISTORIA, GEOGRAFÍA Y CIENCIAS SOCIALES": "Historia",
+    "IDIOMA EXTRANJERO (INGLÉS)": "Inglés",
+    "IDIOMA EXTRANJERO (ITALIANO)": "Italiano",
+    "LENGUAJE Y COMUNICACIÓN": "Lenguaje",
+    "MATEMÁTICA": "Matemática",
+    "MÚSICA": "Música",
+    "TECNOLOGÍA": "Tecnología",
+}
+
+
+def _canonica(asignatura: str) -> str:
+    """«Matemáticas» -> «MATEMÁTICA»; un nombre desconocido queda tal cual."""
+    nombre = " ".join(str(asignatura).split()).upper()
+    if nombre in NOMBRES_ASIGNATURA:
+        return nombre
+    # Sólo se acepta el plural si el singular es una asignatura oficial: así
+    # «MATEMÁTICAS» cuenta como «MATEMÁTICA», pero un nombre inventado se
+    # respeta tal como lo escribió su autor.
+    singular = nombre[:-1]
+    if nombre.endswith("S") and singular in NOMBRES_ASIGNATURA:
+        return singular
+    return nombre
+
+
+# Color fijo de cada asignatura oficial: el que la página viene usando. No se
+# reparte por posición porque entonces basta que aparezca una asignatura nueva
+# (o una variante con otro nombre) para que se corran todas las demás.
+COLORES_ASIGNATURA = {
+    "ARTES VISUALES": "#2563eb",
+    "CIENCIAS NATURALES": "#dc2626",
+    "EDUCACIÓN FÍSICA Y SALUD": "#059669",
+    "HISTORIA, GEOGRAFÍA Y CIENCIAS SOCIALES": "#d97706",
+    "IDIOMA EXTRANJERO (INGLÉS)": "#7c3aed",
+    "IDIOMA EXTRANJERO (ITALIANO)": "#0891b2",
+    "LENGUAJE Y COMUNICACIÓN": "#db2777",
+    "MATEMÁTICA": "#4f46e5",
+    "MÚSICA": "#ea580c",
+    "TECNOLOGÍA": "#0d9488",
+}
+
 _PLANTILLA = r"""<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -377,11 +423,21 @@ _PLANTILLA = r"""<!DOCTYPE html>
     max-width: 1180px; margin: 16px auto 0; color: var(--suave); font-size: 12.5px;
   }
   #ayuda {
-    max-width: 1180px; margin: 16px auto 0; padding: 10px 14px;
+    max-width: 1180px; margin: 16px auto 0; padding: 0; overflow: hidden;
     background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 12px;
     color: var(--suave); font-size: 12.5px;
   }
-  #ayuda h2 { margin: 0 0 6px; font-size: 13.5px; color: var(--texto); }
+  #ayuda > summary {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 10px 14px; cursor: pointer; user-select: none; list-style: none;
+  }
+  #ayuda > summary::-webkit-details-marker { display: none; }
+  #ayuda > summary:hover { background: var(--mes-cabecera-hover); }
+  #ayuda > summary:hover h2 { color: var(--verde-texto); }
+  #ayuda[open] > summary { border-bottom: 1px solid var(--borde); }
+  #ayuda[open] > summary .mes-flecha { transform: rotate(90deg); }
+  #ayuda .ayuda-cuerpo { padding: 10px 14px 12px; }
+  #ayuda h2 { margin: 0; font-size: 13.5px; color: var(--texto); }
   #ayuda ul { margin: 0; padding-left: 18px; }
   #ayuda li { margin: 3px 0; }
   #ayuda strong { color: var(--texto); }
@@ -718,8 +774,12 @@ _PLANTILLA = r"""<!DOCTYPE html>
 
 <section id="leyenda"></section>
 
-<section id="ayuda">
-  <h2>&#128214; Instrucciones de uso</h2>
+<details id="ayuda">
+  <summary>
+    <h2>&#128214; Instrucciones de uso</h2>
+    <span class="mes-flecha" aria-hidden="true">&#9654;</span>
+  </summary>
+  <div class="ayuda-cuerpo">
   <ul>
     <li><strong>Ver el calendario:</strong> cambia de mes con <em>&#8249; &#8250;</em>,
       <em>Hoy</em> vuelve al día de hoy, <em>Imprimir</em> da una copia del mes
@@ -768,7 +828,8 @@ _PLANTILLA = r"""<!DOCTYPE html>
   </div>
   <p class="nota">En iPhone los avisos llegan <strong>sólo</strong> desde la app
     agregada a la pantalla de inicio; en Android, desde Chrome instalada o no.</p>
-</section>
+  </div>
+</details>
 
 <footer>
   Outlook se sincroniza solo cada mañana a las 08:00 (tarea programada),
@@ -995,6 +1056,14 @@ _PLANTILLA = r"""<!DOCTYPE html>
         est.avisos.push('alta inválida: ' + (clave || '(sin clave)'));
         return;
       }
+      // El alta pudo quedar incorporada al generar la página (el scrapeo de la
+      // mañana ya la incluye). Se reconoce porque conserva la clave que se le
+      // dio al crearla; volver a agregarla duplicaría el evento, y con los
+      // textos sin corregir no coincidiría con la copia ya corregida.
+      var yaEnDatos = indice[clave];
+      if (yaEnDatos && String(yaEnDatos.FECHA || '') === String(reg.FECHA || '')) {
+        return;
+      }
       var bk = claveBase(reg);
       var repetida = Object.keys(indice).some(function (k) {
         var r = indice[k];
@@ -1112,16 +1181,28 @@ _PLANTILLA = r"""<!DOCTYPE html>
   }
 
   function coloresDe(eventos) {
+    // Se resuelve por nombre canónico: las variantes de una misma asignatura
+    // («MATEMÁTICAS», «Matemáticas») comparten color. Una asignatura que no
+    // esté en el mapa toma el primer color de la paleta que quede libre, así
+    // no le roba el suyo a ninguna otra.
     var vistos = {};
-    eventos.forEach(function (ev) { if (ev.a) vistos[ev.a] = true; });
+    eventos.forEach(function (ev) {
+      if (ev.a) vistos[nombreAsignatura(ev.a)] = true;
+    });
     var paleta = D.paleta || [];
-    var salida = {}, porNombre = {};
-    Object.keys(vistos).sort().forEach(function (a, i) {
-      var nombre = nombreAsignatura(a);
-      salida[a] = porNombre[nombre] ||
-                   (D.colores && (D.colores[a] || D.colores[nombre])) ||
-                   (paleta.length ? paleta[i % paleta.length] : '#9ca3af');
-      porNombre[nombre] = salida[a];
+    var usados = {};
+    Object.keys(D.colores || {}).forEach(function (k) { usados[D.colores[k]] = true; });
+    var porNombre = {};
+    Object.keys(vistos).sort().forEach(function (nombre, i) {
+      var color = (D.colores && D.colores[nombre]) ||
+                  paleta.filter(function (c) { return !usados[c]; })[0] ||
+                  (paleta.length ? paleta[i % paleta.length] : '#9ca3af');
+      porNombre[nombre] = color;
+      usados[color] = true;
+    });
+    var salida = {};
+    eventos.forEach(function (ev) {
+      if (ev.a) salida[ev.a] = porNombre[nombreAsignatura(ev.a)];
     });
     return salida;
   }
@@ -1339,19 +1420,9 @@ _PLANTILLA = r"""<!DOCTYPE html>
   // Nombres cortos de las asignaturas oficiales. Sirven además para
   // reconocerlas: quien agregue un evento desde la página puede escribir
   // «MATEMÁTICAS» o «Músicas», y eso no debe abrir una entrada nueva en la
-  // leyenda ni robarle el color a la asignatura real.
-  var CORTOS = {
-    'ARTES VISUALES': 'Artes',
-    'CIENCIAS NATURALES': 'Ciencias',
-    'EDUCACIÓN FÍSICA Y SALUD': 'Ed. física',
-    'HISTORIA, GEOGRAFÍA Y CIENCIAS SOCIALES': 'Historia',
-    'IDIOMA EXTRANJERO (INGLÉS)': 'Inglés',
-    'IDIOMA EXTRANJERO (ITALIANO)': 'Italiano',
-    'LENGUAJE Y COMUNICACIÓN': 'Lenguaje',
-    'MATEMÁTICA': 'Matemática',
-    'MÚSICA': 'Música',
-    'TECNOLOGÍA': 'Tecnología'
-  };
+  // leyenda ni robarle el color a la asignatura real. La lista llega desde
+  // Python (NOMBRES_ASIGNATURA) para no mantener dos copias.
+  var CORTOS = {{CORTOS}};
 
   function nombreAsignatura(asig) {
     var nombre = String(asig).trim().replace(/\s+/g, ' ').toUpperCase();
@@ -2607,10 +2678,30 @@ _PLANTILLA = r"""<!DOCTYPE html>
 
 
 def _colores(eventos: list[dict]) -> dict[str, str]:
-    """Color estable por asignatura, en orden alfabético."""
-    asignaturas = sorted({str(r.get("ASIGNATURA") or "").strip()
-                          for r in eventos if r.get("ASIGNATURA")})
-    return {a: PALETA[i % len(PALETA)] for i, a in enumerate(asignaturas)}
+    """Color estable por asignatura: fijo para las oficiales.
+
+    Se resuelve por nombre **canónico**, así «MATEMÁTICAS» y «Matemática»
+    comparten el color de «MATEMÁTICA» y no desplazan al resto. Una asignatura
+    desconocida recibe el primer color de la paleta que quede libre.
+    """
+    crudos: dict[str, str] = {}
+    asignados: dict[str, str] = {}
+    for r in eventos:
+        crudo = str(r.get("ASIGNATURA") or "").strip()
+        if not crudo:
+            continue
+        nombre = _canonica(crudo)
+        crudos[crudo] = nombre
+        if nombre in asignados:
+            continue
+        if nombre in COLORES_ASIGNATURA:
+            asignados[nombre] = COLORES_ASIGNATURA[nombre]
+        else:
+            usados = set(asignados.values())
+            asignados[nombre] = next(
+                (c for c in PALETA if c not in usados),
+                PALETA[len(asignados) % len(PALETA)])
+    return {crudo: asignados[nombre] for crudo, nombre in crudos.items()}
 
 
 def _asegurar(ruta: Path) -> Path:
@@ -2716,6 +2807,7 @@ def a_html(registros: list[dict], ruta: Path,
     html = (
         _PLANTILLA
         .replace("{{DATOS}}", json_texto)
+        .replace("{{CORTOS}}", json.dumps(NOMBRES_ASIGNATURA, ensure_ascii=False))
         .replace("{{ICS}}", ics_b64)
         .replace("{{NUBE}}", nube_json)
         .replace("{{LOGO}}", _logo_base64())
