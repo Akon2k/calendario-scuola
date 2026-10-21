@@ -98,18 +98,21 @@ _PLANTILLA = r"""<!DOCTYPE html>
 <meta name="apple-mobile-web-app-title" content="Calendario Scuola">
 <script id="tema-fouc">
   (function () {
+    // El modo lo manda el teléfono: se lee en cada carga. Si una versión
+    // anterior guardó una elección manual, se descarta.
+    var oscuro = false;
     try {
       var ls = (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null;
-      var g = ls ? ls.getItem('edufacil-tema') : null;
-      var o = g === 'oscuro' || (!g && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
-      if (o) {
-        document.documentElement.setAttribute('data-tema', 'oscuro');
-        var m = document.querySelector('meta[name="theme-color"]');
-        if (m) m.setAttribute('content', '#0f172a');
-      } else if (g === 'claro') {
-        document.documentElement.setAttribute('data-tema', 'claro');
-      }
+      if (ls) ls.removeItem('edufacil-tema');
+      oscuro = !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
     } catch (e) {}
+    if (oscuro) {
+      document.documentElement.setAttribute('data-tema', 'oscuro');
+      var m = document.querySelector('meta[name="theme-color"]');
+      if (m) m.setAttribute('content', '#0f172a');
+    } else {
+      document.documentElement.setAttribute('data-tema', 'claro');
+    }
   })();
 </script>
 <style>
@@ -1541,22 +1544,22 @@ _PLANTILLA = r"""<!DOCTYPE html>
   });
 
   // ------------------------------------------------------------------
-  // Modo claro / oscuro (manual y automático con prefers-color-scheme)
+  // Modo claro / oscuro: manda el teléfono (prefers-color-scheme) y se vuelve
+  // a leer en cada carga. El botón sirve para cambiarlo mientras la página
+  // está abierta; si el teléfono cambia de modo, ese cambio se impone.
   // ------------------------------------------------------------------
   var botonTema = document.getElementById('tema');
   var metaTema = (typeof document !== 'undefined' && document.querySelector)
     ? document.querySelector('meta[name="theme-color"]') : null;
+  var temaManual = null;                    // null = el que diga el teléfono
 
-  function esTemaOscuroActivo() {
-    var guardado = null;
-    try {
-      var ls = (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null;
-      if (ls) guardado = ls.getItem('edufacil-tema');
-    } catch (e) {}
-    if (guardado === 'oscuro') return true;
-    if (guardado === 'claro') return false;
+  function prefiereOscuro() {
     return !!(typeof window !== 'undefined' && window.matchMedia
       && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  }
+
+  function esTemaOscuroActivo() {
+    return temaManual === null ? prefiereOscuro() : temaManual;
   }
 
   function actualizarTemaVisual(oscuro) {
@@ -1578,12 +1581,8 @@ _PLANTILLA = r"""<!DOCTYPE html>
 
   if (botonTema) {
     botonTema.addEventListener('click', function () {
-      var nuevoOscuro = !esTemaOscuroActivo();
-      try {
-        var ls = (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null;
-        if (ls) ls.setItem('edufacil-tema', nuevoOscuro ? 'oscuro' : 'claro');
-      } catch (e) {}
-      actualizarTemaVisual(nuevoOscuro);
+      temaManual = !esTemaOscuroActivo();
+      actualizarTemaVisual(temaManual);
     });
   }
 
@@ -1591,11 +1590,8 @@ _PLANTILLA = r"""<!DOCTYPE html>
     try {
       var mediaOscuro = window.matchMedia('(prefers-color-scheme: dark)');
       var alCambiarMedia = function (e) {
-        var guardado = null;
-        try { guardado = localStorage.getItem('edufacil-tema'); } catch (err) {}
-        if (!guardado) {
-          actualizarTemaVisual(!!e.matches);
-        }
+        temaManual = null;                  // el teléfono vuelve a mandar
+        actualizarTemaVisual(!!e.matches);
       };
       if (mediaOscuro.addEventListener) {
         mediaOscuro.addEventListener('change', alCambiarMedia);
@@ -2666,8 +2662,8 @@ _PLANTILLA = r"""<!DOCTYPE html>
     recargar: cargarFilas,
     tema: esTemaOscuroActivo,
     cambiarTema: function (oscuro) {
-      try { localStorage.setItem('edufacil-tema', oscuro ? 'oscuro' : 'claro'); } catch (e) {}
-      actualizarTemaVisual(oscuro);
+      temaManual = !!oscuro;
+      actualizarTemaVisual(temaManual);
     }
   };
 })();

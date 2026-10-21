@@ -905,28 +905,29 @@ if (totalTrasError !== 501)
   fallo('un error de red borró los mensajes que ya se habían cargado');
 ok('mensajes: período completo paginado (501), orden estable y sin borrar la vista ante fallos de red');
 
-// Modo oscuro / claro
+// Modo oscuro / claro: manda el teléfono; el botón cambia mientras se mira.
 if (porId['tema'].textContent !== '🌙' || docEl.getAttribute('data-tema') !== 'claro')
-  fallo('el tema inicial por defecto debe ser claro');
+  fallo('el tema inicial debe seguir al sistema (claro)');
+if (almacenamientoMemoria.has('edufacil-tema'))
+  fallo('no debe quedar guardada una preferencia de tema de antes');
 porId['tema'].click();
 if (docEl.getAttribute('data-tema') !== 'oscuro' || porId['tema'].textContent !== '☀️'
-    || metaThemeColor.getAttribute('content') !== '#0f172a'
-    || almacenamientoMemoria.get('edufacil-tema') !== 'oscuro')
-  fallo('al hacer clic en tema no cambió a modo oscuro o no persistió en almacenamiento');
+    || metaThemeColor.getAttribute('content') !== '#0f172a')
+  fallo('al hacer clic en tema no cambió a modo oscuro');
+if (almacenamientoMemoria.has('edufacil-tema'))
+  fallo('la elección manual no debe persistir: manda el teléfono');
 porId['tema'].click();
 if (docEl.getAttribute('data-tema') !== 'claro' || porId['tema'].textContent !== '🌙'
-    || metaThemeColor.getAttribute('content') !== '#008837'
-    || almacenamientoMemoria.get('edufacil-tema') !== 'claro')
+    || metaThemeColor.getAttribute('content') !== '#008837')
   fallo('al volver a hacer clic en tema no volvió a claro');
-almacenamientoMemoria.delete('edufacil-tema');
 mediaQueryOscuroMatches = true;
 mediaQueryListeners.forEach(fn => fn({ matches: true }));
 if (docEl.getAttribute('data-tema') !== 'oscuro' || porId['tema'].textContent !== '☀️')
-  fallo('sin preferencia manual debe reaccionar a cambio del sistema a oscuro');
+  fallo('un cambio del sistema debe imponerse al botón');
 mediaQueryOscuroMatches = false;
 mediaQueryListeners.forEach(fn => fn({ matches: false }));
 if (docEl.getAttribute('data-tema') !== 'claro' || porId['tema'].textContent !== '🌙')
-  fallo('sin preferencia manual debe reaccionar a cambio del sistema a claro');
-ok('modo oscuro: botón manual (🌙/☀️), persistencia en localStorage y detección automática');
+  fallo('debe volver a claro cuando el teléfono vuelve a claro');
+ok('modo oscuro: sigue al teléfono (al abrir y al cambiar) y el botón sólo cambia mientras se mira');
 
 console.log("\nTODO OK");
