@@ -15,5 +15,7 @@ if errorlevel 1 (
 )
 rem 2) Sube la pagina a GitHub Pages (URL fija de la PWA).
 python publicar.py >> "logs\tarea.log" 2>&1
-rem 3) Envia los avisos (resumen del sabado + cambios del dia).
-python avisos.py >> "logs\tarea.log" 2>&1
+rem 3) Envia los avisos (resumen del sabado + cambios del dia), solo de dia:
+rem    la corrida de la medianoche actualiza y publica, pero no avisa a nadie.
+set /a HORA_AVISOS=%time:~0,2%
+if %HORA_AVISOS% GEQ 8 if %HORA_AVISOS% LSS 22 python avisos.py >> "logs\tarea.log" 2>&1

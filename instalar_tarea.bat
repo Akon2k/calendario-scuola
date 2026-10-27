@@ -4,19 +4,17 @@ title Instalar / quitar tarea programada
 cd /d "%~dp0"
 
 set "ARG1=%~1"
-set "HORA=%~1"
-if "%HORA%"=="" set "HORA=08:00"
 
 if /I "%ARG1%"=="/eliminar" goto eliminar
 
-echo Creando tarea diaria a las %HORA% ...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0instalar_tarea.ps1" -Hora "%HORA%"
+echo Creando tareas a las 00:00, 08:00, 12:00, 16:00 y 20:00 ...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0instalar_tarea.ps1"
 if errorlevel 1 (
     echo.
     echo No se pudo crear la tarea. Ejecuta este archivo como Administrador.
 ) else (
     echo.
-    echo Lista. Se ejecutara cada dia a las %HORA% y guardara el Excel en "salida".
+    echo Lista. Se actualiza cinco veces al dia y guarda el Excel en "salida".
     echo Para quitarla: instalar_tarea.bat /eliminar
 )
 pause

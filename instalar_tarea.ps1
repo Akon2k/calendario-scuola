@@ -1,9 +1,10 @@
 # Crea (o elimina) las tareas programadas: la del scraper y la de avisos.
 # Se usa desde instalar_tarea.bat; se puede invocar a mano:
-#   powershell -ExecutionPolicy Bypass -File instalar_tarea.ps1 -Hora 19:30
+#   powershell -ExecutionPolicy Bypass -File instalar_tarea.ps1
+#   powershell -ExecutionPolicy Bypass -File instalar_tarea.ps1 -Horas "19:30"
 #   powershell -ExecutionPolicy Bypass -File instalar_tarea.ps1 -Eliminar
 param(
-    [string]$Hora = "08:00",
+    [string[]]$Horas = @("00:00", "08:00", "12:00", "16:00", "20:00"),
     [switch]$Eliminar
 )
 
@@ -37,11 +38,11 @@ $cmdExe  = Join-Path $env:SystemRoot "System32\cmd.exe"
 $accion = New-ScheduledTaskAction -Execute $conhost `
     -Argument "--headless $cmdExe /d /c `"$bat`"" `
     -WorkingDirectory $carpeta
-$disparo = New-ScheduledTaskTrigger -Daily -At $Hora
-Register-ScheduledTask -TaskName $nombre -Action $accion -Trigger $disparo -Force | Out-Null
+$disparos = @($Horas | ForEach-Object { New-ScheduledTaskTrigger -Daily -At $_ })
+Register-ScheduledTask -TaskName $nombre -Action $accion -Trigger $disparos -Force | Out-Null
 
 Write-Host "Tarea '$nombre' creada."
-Write-Host "  Se ejecuta cada dia a las $Hora"
+Write-Host ("  Se ejecuta cada dia a las " + ($Horas -join ", "))
 Write-Host "  Programa : $bat"
 Write-Host "  Salida   : (salida)\calendario_evaluaciones.xlsx"
 Write-Host "  Registro : logs\tarea.log"

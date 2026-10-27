@@ -315,7 +315,8 @@ resto de la bitácora.
 
 - La página baja las filas **al abrirla** y las aplica encima de los datos
   embebidos: se ve al instante, incluso lo que corrigió otra persona.
-- **Las 08:00** (`tarea.bat`) hace `scrapeo + filas` y de ahí salen los
+- **Cinco veces al día** (00:00, 08:00, 12:00, 16:00 y 20:00) `tarea.bat` hace
+  `scrapeo + filas` y de ahí salen los
   archivos, la página y las citas de Outlook, todos corregidos. Ese orden es
   a propósito: si Supabase no responde, la corrida no se rompe —usa el
   respaldo local `logs/ediciones.json` o sigue sin correcciones— y lo anota
@@ -390,12 +391,11 @@ docker compose logs -f tunel                  # ver la URL del túnel
 docker compose --profile tunel down           # detener todo
 ```
 
-## Ejecución programada (cada día)
+## Ejecución programada (cinco veces al día)
 
 ```bash
-instalar_tarea.bat           # crea la tarea a las 08:00
-instalar_tarea.bat 19:30     # crea la tarea a las 19:30
-instalar_tarea.bat /eliminar # la quita
+instalar_tarea.bat             # 00:00, 08:00, 12:00, 16:00 y 20:00
+instalar_tarea.bat /eliminar   # la quita
 ```
 
 Corre `tarea.bat` en segundo plano y el resultado queda en `logs/tarea.log`.
@@ -410,7 +410,9 @@ salida queda en `logs/avisos_dia.log`.
    `python main.py --outlook`: todo el calendario, sin tope de fecha, para
    que Outlook quede igual que la página pase lo que pase;
 2. `python publicar.py` → sube la página a GitHub Pages;
-3. `python avisos.py` → envía los avisos pendientes.
+3. `python avisos.py` → envía los avisos pendientes, **sólo entre 08:00 y
+   21:59**: la corrida de la medianoche actualiza y publica, pero no manda
+   notificaciones de madrugada.
 
 Si `main.py` termina con error no se publica ni se avisa: se conserva la
 última versión buena y queda anotado en `logs/tarea.log`.
