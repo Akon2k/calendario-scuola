@@ -26,7 +26,17 @@ if (-not (Test-Path $bat)) {
 }
 
 # WorkingDirectory es importante: si no, el scraper correria en C:\Windows\System32.
-$accion = New-ScheduledTaskAction -Execute $bat -WorkingDirectory $carpeta
+#
+# Lanzamiento OCULTO: si el .bat se ejecuta directamente, Windows abre una
+# ventana de CMD cada vez (y avisos_dia.bat lo hace cada hora). Se envuelve con
+# conhost --headless, que ejecuta el mismo comando sin ventana. IMPORTANTE:
+# powershell -WindowStyle Hidden NO sirve aqui, porque el equipo usa Windows
+# Terminal como host de consola y la ventana se ve igualmente.
+$conhost = Join-Path $env:SystemRoot "System32\conhost.exe"
+$cmdExe  = Join-Path $env:SystemRoot "System32\cmd.exe"
+$accion = New-ScheduledTaskAction -Execute $conhost `
+    -Argument "--headless $cmdExe /d /c `"$bat`"" `
+    -WorkingDirectory $carpeta
 $disparo = New-ScheduledTaskTrigger -Daily -At $Hora
 Register-ScheduledTask -TaskName $nombre -Action $accion -Trigger $disparo -Force | Out-Null
 
@@ -40,7 +50,9 @@ Write-Host "  Registro : logs\tarea.log"
 # hecha a media tarde se anuncie el mismo dia (el resumen del sabado se
 # envia una sola vez: avisos.py se acuerda en logs\avisos_estado.json).
 if (Test-Path $batAvisos) {
-    $accion2 = New-ScheduledTaskAction -Execute $batAvisos -WorkingDirectory $carpeta
+    $accion2 = New-ScheduledTaskAction -Execute $conhost `
+        -Argument "--headless $cmdExe /d /c `"$batAvisos`"" `
+        -WorkingDirectory $carpeta
     $disparo2 = New-ScheduledTaskTrigger -Daily -At "08:00"
     # Repeticion diaria: se toma el patron de un disparo «una vez».
     # Hasta las 22:59 -> la última repetición es a las 22:00 (nada de madrugada).
