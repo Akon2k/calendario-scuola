@@ -2075,10 +2075,57 @@ _PLANTILLA = r"""<!DOCTYPE html>
     var boton = document.getElementById('m-guardar');
     if (boton) boton.disabled = true;
     errorModal('');
-    // Primero el archivo (si lo hay) y después las filas: si la subida falla,
-    // no se guarda nada a medias.
-    var subida = adjuntoElegido ? subirAdjunto(claveDestino, adjuntoElegido)
-                                : Promise.resolve(null);
+    var archivo = adjuntoElegido;
+
+    function acabar(aviso) {
+      if (boton) boton.disabled = false;
+      reconstruir();
+      cerrarModal();
+      repintar();
+      var n = contarFilas();
+      estado(aviso ? aviso
+                   : n + (n === 1 ? ' corrección' : ' correcciones') + ' · guardado',
+             aviso ? 'mal' : 'ok');
+    }
+
+    function claveDeFila(idFila) {
+      var hallada = '';
+      Object.keys(porDia).forEach(function (f) {
+        porDia[f].forEach(function (ev) {
+          (ev.filas || []).forEach(function (x) {
+            if (x.id === idFila) hallada = ev.k;
+          });
+        });
+      });
+      return hallada;
+    }
+
+    if (modo === 'nuevo' && archivo) {
+      // La clave del evento nuevo recién se conoce al aplicarlo: si ya había
+      // otro con la misma asignatura/número/tipo, le toca #2 y no #1. Se da
+      // de alta primero y después se pega el PDF en la clave real.
+      enviar(fila).then(function (hechas) {
+        filasNube = filasNube.concat(hechas);
+        reconstruir();
+        var k = claveDeFila(hechas[0] && hechas[0].id) || claveDestino;
+        return subirAdjunto(k, archivo).then(function (adjuntoFila) {
+          return enviar(adjuntoFila).then(function (r) {
+            filasNube = filasNube.concat(r);
+            acabar();
+          });
+        }).catch(function () {
+          acabar('evento guardado; el PDF no se pudo subir');
+        });
+      }).catch(function (err) {
+        if (boton) boton.disabled = false;
+        errorModal('No se pudo guardar: ' + String(err.message || err).slice(0, 120));
+      });
+      return;
+    }
+
+    // Correcciones y resumen: primero el archivo, después la fila (si la subida
+    // falla, no se guarda nada a medias).
+    var subida = archivo ? subirAdjunto(claveDestino, archivo) : Promise.resolve(null);
     subida.then(function (adjuntoFila) {
       var envios = [];
       if (adjuntoFila) envios.push(adjuntoFila);
@@ -2089,13 +2136,8 @@ _PLANTILLA = r"""<!DOCTYPE html>
         });
       }, Promise.resolve([]));
     }).then(function (filas) {
-      if (boton) boton.disabled = false;
       filasNube = filasNube.concat(filas);
-      reconstruir();
-      cerrarModal();
-      repintar();
-      var n = contarFilas();
-      estado(n + (n === 1 ? ' corrección' : ' correcciones') + ' · guardado', 'ok');
+      acabar();
     }).catch(function (err) {
       if (boton) boton.disabled = false;
       errorModal('No se pudo guardar: ' + String(err.message || err).slice(0, 120));

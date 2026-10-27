@@ -848,6 +848,43 @@ if (!/No se pudo guardar/.test(porId["m-error"].textContent))
 porId["m-cancelar"].click();
 ok("material: si la subida falla no se guarda nada y avisa");
 
+// 13) evento nuevo con la misma asignatura/número/tipo que uno existente:
+//     el PDF se pega al evento recién creado, no al que ya estaba.
+porId.nuevo.click();
+porId["m-FECHA"].value = LIBRE;
+porId["m-ASIGNATURA"].value = EV.a;
+porId["m-NUMERO"].value = EV.n;
+porId["m-TIPO"].value = EV.t;
+porId["m-EVALUACION"].value = "Repetida con material";
+elegir({ name: "repetida.pdf", type: "application/pdf", size: 1500 });
+const antesRep = posts.length;
+porId["m-guardar"].click();
+await tick();
+await tick();
+await tick();
+
+const filasRep = posts.slice(antesRep);
+const altaRep = filasRep.find((p) => p.tipo === "nuevo");
+const adjRep = filasRep.find((p) => p.tipo === "adjunto");
+if (!altaRep || !adjRep)
+  fallo("no se guardaron el alta y su material: " + JSON.stringify(filasRep));
+if (adjRep.clave === EV.k || adjRep.clave === altaRep.clave)
+  fallo("el material quedó con una clave que no es la del evento nuevo: "
+        + adjRep.clave);
+
+const cLibre2 = porId.rejilla.children.find((c) => c.dataset.fecha === LIBRE);
+cLibre2.click();
+const itemRep = porId.detalle.children.find((it) =>
+  it.children.some((c) => (c.textContent || "").includes("Repetida con material")));
+if (!itemRep || !itemRep.children.some((c) => c.className === "adjuntos"))
+  fallo("el material no aparece en el evento nuevo");
+const cEvE = porId.rejilla.children.find((c) => c.dataset.fecha === FECHA_EV);
+cEvE.click();
+const itemEvE = itemDe(porId.detalle, EV.a);
+if (itemEvE.children.some((c) => c.className === "adjuntos"))
+  fallo("el material del evento nuevo se pegó al evento que ya existía");
+ok("material: al crear un evento repetido, el PDF va al evento nuevo");
+
 // 10) PWA: manifest, service worker, iconos y los botones de instalar/avisos
 if (!/<link rel="manifest" href="manifest\.webmanifest">/.test(html))
   fallo("falta <link rel=\"manifest\">");
