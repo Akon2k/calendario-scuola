@@ -4,6 +4,7 @@ import sys
 import tempfile
 from datetime import date
 from pathlib import Path
+from unittest.mock import patch
 
 # Consolas cp1252 de Windows: los emojis de los mensajes van a «?» y no truena.
 for _salida in (sys.stdout, sys.stderr):
@@ -165,6 +166,53 @@ def main() -> int:
     assert "+2 más" in mensajes[0]["cuerpo"], mensajes[0]["cuerpo"]
     assert len(mensajes[0]["cuerpo"].splitlines()) == 5, mensajes[0]["cuerpo"]
     print(" recorte: +2 más")
+
+    print("\n== avisos: PDF e integración con el worker inmediato ==")
+    pdf = {"id": "pdf-1", "tipo": "adjunto", "clave": "MATEMÁTICA|5|EVALUACIÓN#1",
+           "campos": {"nombre": "guia.pdf"}, "autor": "Ana",
+           "creado": "2026-10-07T14:00:00+00:00"}
+    mensajes = avisos.preparar_mensajes(REGISTROS, [pdf], hoy=HOY, estado=estado_base())
+    assert "nuevo PDF" in mensajes[0]["cuerpo"] and "guia.pdf" in mensajes[0]["cuerpo"]
+    assert mensajes[0]["titulo"] == "✏️ Cambios en el calendario"
+    assert avisos._sello_nuevo([pdf], estado_base()["ultima_edicion"]).startswith("2026-10-07T14:00")
+    print(" PDF sin otros cambios: genera aviso en el modo horario de respaldo")
+
+    inmediatas = [dict(f, push_inmediato=True) for f in FILAS + [pdf]]
+    mensajes = avisos.preparar_mensajes(REGISTROS, inmediatas, hoy=HOY, estado=estado_base())
+    assert mensajes == [], "no repetir los cambios que pertenecen a la cola del servidor"
+    mensajes = avisos.preparar_mensajes(REGISTROS, inmediatas, hoy=SABADO, estado=estado_base())
+    assert len(mensajes) == 1 and mensajes[0]["tag"] == "resumen"
+    assert not mensajes[0]["incluye_cambios"]
+    print(" worker inmediato: sin duplicados horarios y conserva el resumen del sábado")
+
+    mixtas = inmediatas + [dict(pdf, id="pdf-2", push_inmediato=False,
+                              campos={"nombre": "otro.pdf"})]
+    mensajes = avisos.preparar_mensajes(REGISTROS, mixtas, hoy=HOY, estado=estado_base())
+    assert "otro.pdf" in mensajes[0]["cuerpo"] and "guia.pdf" not in mensajes[0]["cuerpo"]
+    print(" migración parcial: sólo anuncia las filas que no maneja el servidor")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        import json
+
+        config = Path(tmp) / "config.json"
+        config.write_text(json.dumps({
+            "supabase": {"url": "https://prueba.supabase.co", "anon_key": "clave-ficticia"},
+            "avisos": {"vapid_privada": "clave-ficticia"},
+        }), encoding="utf-8")
+        registros = Path(tmp) / "registros.json"
+        registros.write_text(json.dumps({"registros": REGISTROS}), encoding="utf-8")
+        with patch.object(avisos, "ARCHIVO_JSON", registros), \
+                patch.object(avisos, "cargar_estado", return_value=estado_base()), \
+                patch.object(avisos, "guardar_estado") as guardar, \
+                patch.object(avisos, "registrar"), \
+                patch.object(avisos, "cargar_suscripciones") as suscripciones, \
+                patch.object(ediciones, "obtener_filas", return_value=inmediatas):
+            assert avisos.principal(["--config", str(config)]) == 0
+            suscripciones.assert_not_called()
+            actualizado = guardar.call_args.args[0]
+            assert actualizado["ultima_edicion"].startswith("2026-10-07T14:00")
+            assert actualizado["huellas"] == avisos.instantanea(REGISTROS, inmediatas)
+    print(" sin avisos horarios: avanza el corte del servidor y no envía nada")
 
     print("\n== avisos: sábado con cambios pendientes ==")
     vieja = avisos.instantanea(REGISTROS)

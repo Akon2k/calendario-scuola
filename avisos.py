@@ -113,6 +113,10 @@ def _describir_correccion(fila: dict) -> str:
         extra = f" · {_fecha_corta(fecha)}" if fecha else ""
         return f"Nueva: {_identidad(fila)}{extra}{sufijo}"
 
+    if str(fila.get("tipo") or "") == "adjunto":
+        nombre = _corto(campos.get("nombre") or "material.pdf", 100)
+        return f"{_identidad(fila)}: nuevo PDF · {nombre}{sufijo}"
+
     partes = []
     for campo, valor in list(campos.items())[:3]:
         antes = previo.get(campo)
@@ -247,7 +251,7 @@ def _corte_iso(desde) -> datetime | None:
 
 
 def _filas_desde(filas: list[dict], desde) -> tuple[list[dict], list[dict]]:
-    """(correcciones y altas, anulaciones) posteriores a `desde` (ISO).
+    """(correcciones, altas y PDF, anulaciones) posteriores a `desde` (ISO).
 
     Las filas que otra fila anuló se saltan: de ellas sólo avisa su «↩️».
     """
@@ -267,7 +271,7 @@ def _filas_desde(filas: list[dict], desde) -> tuple[list[dict], list[dict]]:
         tipo = str(fila.get("tipo") or "")
         if tipo == "anula":
             anulaciones.append(fila)
-        elif tipo in ("correccion", "nuevo") and fila.get("id") \
+        elif tipo in ("correccion", "nuevo", "adjunto") and fila.get("id") \
                 and str(fila["id"]) not in canceladas:
             recientes.append(fila)
     orden = lambda f: str(f.get("creado") or "")   # noqa: E731
@@ -295,12 +299,18 @@ def _lineas_de_cambios(registros: list[dict], filas: list[dict],
     if desde:
         recientes, anulaciones = _filas_desde(filas, desde)
         for fila in recientes:
-            lineas.append("✏️ " + _describir_correccion(fila))
+            # La marca la impone el trigger de Supabase, nunca el navegador.
+            # La cola del servidor se encarga de enviarlo/reintentarlo; no
+            # repetir el mismo cambio en el aviso horario del PC.
+            if fila.get("push_inmediato") is not True:
+                prefijo = "📎 " if fila.get("tipo") == "adjunto" else "✏️ "
+                lineas.append(prefijo + _describir_correccion(fila))
             clave = str(fila.get("clave") or "").strip()
             if clave:
                 cubiertas.add(clave.split("#")[0])
         for fila in anulaciones:
-            lineas.append("↩️ " + _describir_anulacion(fila))
+            if fila.get("push_inmediato") is not True:
+                lineas.append("↩️ " + _describir_anulacion(fila))
             clave = str(fila.get("clave") or "").strip()
             if clave:
                 cubiertas.add(clave.split("#")[0])
@@ -360,7 +370,7 @@ def preparar_mensajes(registros: list[dict], filas: list[dict],
             "incluye_cambios": bool(cambios),
         }]
     if cambios:
-        hay_edicion = any(l.startswith(("✏️", "↩️")) for l in cambios)
+        hay_edicion = any(l.startswith(("✏️", "↩️", "📎")) for l in cambios)
         return [{
             "titulo": "✏️ Cambios en el calendario" if hay_edicion
                       else "🔄 El calendario cambió",
@@ -566,11 +576,12 @@ def principal(argv: list[str] | None = None) -> int:
 
     if not mensajes:
         registrar("Sin cambios ni resumen pendiente: no se envía nada")
-        if cambios_activos:                     # 1ª corrida: sólo la instantánea
+        if cambios_activos:
             nuevo = dict(estado)
-            nuevo.setdefault("huellas", instantanea(registros, filas))
-            nuevo.setdefault("ultima_edicion",
-                             datetime.now().astimezone().isoformat())
+            # También avanzar si todo lo nuevo pertenece al worker inmediato:
+            # no dejar sus claves tapando cambios futuros del sitio.
+            nuevo["huellas"] = instantanea(registros, filas)
+            nuevo["ultima_edicion"] = _sello_nuevo(filas, estado.get("ultima_edicion"))
             guardar_estado(nuevo)
         return 0
 

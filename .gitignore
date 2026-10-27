@@ -8,3 +8,9 @@ logs/
 _prueba_salida/
 __pycache__/
 *.pyc
+
+# Secretos y estado local de las funciones de Supabase
+.env
+.env.*
+!.env.example
+supabase/.temp/

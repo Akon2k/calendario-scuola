@@ -1,0 +1,5 @@
+project_id = "calendario-scuola"
+
+[functions.avisos-ediciones]
+# El webhook se autentica con PUSH_WEBHOOK_SECRET, no con la clave pública.
+verify_jwt = false

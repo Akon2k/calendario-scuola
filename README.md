@@ -154,6 +154,12 @@ funcionan sin problemas.
 
 ## El resumen de los sábados y los avisos
 
+**Avisos inmediatos por ediciones y PDF:** la implementación del servidor está
+en `sql/avisos_inmediatos.sql` y `supabase/functions/avisos-ediciones/`.
+**Requiere despliegue y activación en Supabase; el commit no los activa.**
+Pasos y estado: [docs/avisos_inmediatos.md](docs/avisos_inmediatos.md).
+Mientras no se active, sigue el envío horario desde este PC (ahora incluye PDF).
+
 La estrategia es sencilla:
 
 - **El sábado a las 7 de la mañana** se envía el resumen de la semana que
