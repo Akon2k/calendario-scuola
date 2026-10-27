@@ -154,11 +154,12 @@ funcionan sin problemas.
 
 ## El resumen de los sábados y los avisos
 
-**Avisos inmediatos por ediciones y PDF:** la implementación del servidor está
-en `sql/avisos_inmediatos.sql` y `supabase/functions/avisos-ediciones/`.
-**Requiere despliegue y activación en Supabase; el commit no los activa.**
-Pasos y estado: [docs/avisos_inmediatos.md](docs/avisos_inmediatos.md).
-Mientras no se active, sigue el envío horario desde este PC (ahora incluye PDF).
+**Avisos inmediatos por ediciones y PDF: activados en Supabase el 27/10/2026.**
+Las ediciones, fechas, eventos nuevos, PDF y anulaciones disparan el envío
+desde el servidor, sin depender del PC. El aviso horario no los repite;
+conserva el resumen del sábado y los cambios detectados en EduFácil.
+La recepción en teléfono queda por confirmar con una edición real.
+Pasos, verificación y pausa: [docs/avisos_inmediatos.md](docs/avisos_inmediatos.md).
 
 La estrategia es sencilla:
 

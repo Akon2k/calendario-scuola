@@ -1,7 +1,13 @@
 # Avisos inmediatos por cambios de tarjetas
 
-**Estado:** código preparado y probado localmente. No queda activo por hacer
-commit o publicar en GitHub: requiere desplegar la función y activar Supabase.
+**Estado: activado en Supabase el 27/10/2026.** Función `avisos-ediciones`
+versión 1 desplegada, secretos configurados en servidor/Vault y reintentos
+activos. Verificados HTTP 401 sin secreto, HTTP 200 autenticado con cola vacía
+y trigger real mediante `sql/verificar_avisos_sin_envios.sql` (ROLLBACK).
+No se enviaron pruebas al grupo ni se reenviaron ediciones históricas.
+**Pendiente:** confirmar recepción en un teléfono con la siguiente edición real.
+Hacer commit o publicar en GitHub por sí solos no activa otro proyecto:
+para reinstalar, seguir los pasos de abajo.
 
 ## Qué cambia
 
@@ -55,7 +61,7 @@ No se necesita cambiar el HTML para activar los avisos del servidor.
    ```powershell
    npx supabase login
    npx supabase secrets set --project-ref icblrmookmpmzpnjeeeh --env-file logs/push-inmediato/servidor.env
-   npx supabase functions deploy avisos-ediciones --project-ref icblrmookmpmzpnjeeeh
+   npx supabase functions deploy avisos-ediciones --project-ref icblrmookmpmzpnjeeeh --use-api
    ```
 
    `supabase/config.toml` desactiva la verificación JWT **sólo** para esta
@@ -65,7 +71,9 @@ No se necesita cambiar el HTML para activar los avisos del servidor.
 4. Ejecutar el archivo **privado** `logs/push-inmediato/configurar_webhook.sql`
    en el SQL Editor. Guarda URL/secreto en Vault; todavía no activa nada.
 5. Confirmar que la función desplegada está sana y que se está usando la
-   versión nueva de `avisos.py`. Después activar:
+   versión nueva de `avisos.py`. Se puede comprobar el trigger sin guardar
+   cambios ni enviar avisos con `sql/verificar_avisos_sin_envios.sql`.
+   Después activar:
 
    ```sql
    update public.push_ediciones_config set activo = true where id;

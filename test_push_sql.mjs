@@ -121,5 +121,16 @@ try {
     assert.deepEqual(permisos, { tabla: false, rpc: false, secreto: false });
   }
   assert.equal(await count('cron.pruebas'), 1);
+  // La misma verificación que se ejecuta contra Supabase no deja filas,
+  // peticiones pendientes ni cambia el interruptor original.
+  const verificacion = readFileSync(new URL('./sql/verificar_avisos_sin_envios.sql', import.meta.url), 'utf8');
+  const antes = await count('ediciones'), peticiones = await count('net.pruebas');
+  for (const activo of [false, true]) {
+    await q('update push_ediciones_config set activo=$1', [activo]);
+    await db.exec(verificacion);
+    assert.equal(await count('ediciones'), antes);
+    assert.equal(await count('net.pruebas'), peticiones);
+    assert.equal((await q('select activo from push_ediciones_config'))[0].activo, activo);
+  }
   console.log('TODO OK: PostgreSQL, triggers, rollback, cutover, permisos, lease, backoff, PDF y sin reenvíos a entregados');
 } finally { await db.close(); }
