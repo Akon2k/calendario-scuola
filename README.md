@@ -132,6 +132,15 @@ Lo que puede hacer quien la abre:
   cada corrida, así que una asignatura nueva aparece sola; «Otra…» permite
   escribir una que todavía no esté.
 - **Deshacer**: anula una corrección sin borrar nada; queda quién la anuló.
+- **Unir con otra tarjeta** (eventos agregados manualmente): permite elegir
+  la tarjeta oficial, aunque tenga otro nombre, y qué fecha, título, contenido
+  y profesor conservar. Mantiene los PDF de ambas (sin volver a subirlos ni
+  duplicar el mismo archivo) y retira sólo el evento manual. Requiere elegir
+  un destino y confirmar expresamente. Datos, referencias PDF y anulación se
+  guardan juntos en una transacción; no se borra el historial ni el archivo.
+  Antes de guardar vuelve a leer Supabase y aborta si cambiaron las tarjetas
+  o no hay conexión. No hace una descarga nueva de EduFácil desde el navegador:
+  los destinos son los de la última actualización del calendario.
 - **Descargar .ics**: baja el calendario para Google Calendar o Outlook web.
 - **Instalar app**: la convierte en una app del celular o de la PC.
 - **Avisos**: da de alta el navegador para recibir notificaciones.
@@ -314,6 +323,10 @@ resto de la bitácora.
   repite en el año, así que cada repetición lleva su posición según el orden
   del scrapeo, que no cambia cuando alguien corrige una fecha. Mover un dato
   nunca hace que la siguiente corrección apunte al registro equivocado.
+  Los eventos manuales conservan además el ID de su alta al generar el HTML;
+  retirar uno no renumera los demás ni cambia el destino de sus PDF. Las
+  tarjetas retiradas tampoco reaparecen por venir en el HTML de una corrida
+  anterior. Estos metadatos no agregan columnas a Excel/CSV/JSON.
 - **Caducidad**: cada corrección guarda el valor que reemplazó; si EduFácil
   cambia ese dato por su cuenta, la corrección vieja se ignora sola y queda
   un aviso en `logs/ejecucion.log`.

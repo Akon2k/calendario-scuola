@@ -314,8 +314,10 @@ def main() -> int:
     # Correcciones hechas por la comunidad desde la página (Supabase): el
     # scrapeo es la base y lo corregido se aplica encima.
     nube, filas = cargar_correcciones(config, args.sin_nube)
+    manuales = {}
     if filas:
         exportables, claves, est = ediciones.aplicar(exportables, filas)
+        manuales = est.get("manuales", {})
         registrar_ediciones(est)
     else:
         claves = ediciones.claves_unicas(exportables)
@@ -361,7 +363,8 @@ def main() -> int:
                               nube=nube,
                               claves=claves + claves_resumen,
                               avisos_clave=clave_avisos,
-                              asignaturas=meta.get("asignaturas"))
+                              asignaturas=meta.get("asignaturas"),
+                              manuales=manuales)
             else:
                 registrar(f"Formato desconocido, se omite: {formato}")
                 continue

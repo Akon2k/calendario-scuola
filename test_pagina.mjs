@@ -155,6 +155,8 @@ const filasSim = [];
 const posts = [];
 const subidas = [];
 let errorSubida = false;
+const lotes = [];
+let errorLote = false, errorFilas = false;
 // la tabla «comunicados» (los correos de la Scuola) va aparte de las correcciones
 const comunicadosSim = [
   { id: "c1", asunto: "3ª Reunión de Apoderados", fecha: "2026-10-15T18:40:00Z",
@@ -221,6 +223,15 @@ globalThis.fetch = async (url, opts = {}) => {
   }
   if (opts && opts.method === "POST") {
     const cuerpo = JSON.parse(opts.body);
+    if (Array.isArray(cuerpo)) {
+      lotes.push(cuerpo);
+      if (errorLote) return { ok: false, status: 400, text: async () => 'Fallo de transacción' };
+      const filas = cuerpo.map((f, i) => ({ id: 'f' + (hechos.length + i + 1),
+        creado: new Date().toISOString(), ...f }));
+      lista.push(...filas);
+      hechos.push(...filas);
+      return { ok: true, status: 201, text: async () => JSON.stringify(filas) };
+    }
     if (comu && lista.some((f) => f.id === cuerpo.id))   // clave primaria
       return { ok: true, status: 200, text: async () => "[]" };
     const fila = { id: "f" + (hechos.length + 1),
@@ -229,6 +240,7 @@ globalThis.fetch = async (url, opts = {}) => {
     hechos.push(fila);
     return { ok: true, status: 201, text: async () => JSON.stringify([fila]) };
   }
+  if (errorFilas) return { ok: false, status: 503 };
   return { ok: true, status: 200,
            json: async () => [...lista],
            text: async () => JSON.stringify(lista) };
@@ -615,15 +627,17 @@ ok("leyenda: «MATEMÁTICAS» se agrupa con Matemática y hereda su color");
 // 5c) el alta que el scrapeo de la mañana ya incorporó no se agrega otra vez.
 //     Se simula con un evento existente: la nube todavía trae el texto previo
 //     a las correcciones, así que no coincide como «repetida» por evaluación.
-const yaIncluido = datos.eventos.find((e) => e.f.startsWith("2026-10-") && e.a);
+const yaIncluido = datos.eventos.find((e) => e.f.startsWith("2026-10-") && e.nuevo)
+  || datos.eventos.find((e) => e.f.startsWith("2026-10-") && e.a);
+const idIncluido = yaIncluido.nuevo || 'baked-1';
 const chipsAntes = porId.rejilla.children
   .find((c) => c.dataset.fecha === yaIncluido.f).children
   .filter((c) => c.className === "ev").length;
 filasSim.push({
-  id: "baked-1", tipo: "nuevo", clave: yaIncluido.k,
+  id: idIncluido, tipo: "nuevo", clave: yaIncluido.k,
   campos: { FECHA: yaIncluido.f, ASIGNATURA: yaIncluido.a,
-            EVALUACION: yaIncluido.e + " (borrador)", CONTENIDO: "",
-            PROFESOR: "", NUMERO: "", ABREVIATURA: "", COEFICIENTE: "",
+            EVALUACION: yaIncluido.e + (yaIncluido.nuevo ? " (borrador)" : ""), CONTENIDO: "",
+            PROFESOR: "", NUMERO: yaIncluido.n || "", ABREVIATURA: "", COEFICIENTE: "",
             PONDERACION: "", TIPO: yaIncluido.t },
   previo: {}, autor: "prueba duplicado", creado: "2026-10-19T12:30:00Z",
   token: "anon",
@@ -635,7 +649,7 @@ const chipsDespues = porId.rejilla.children
 if (chipsDespues !== chipsAntes)
   fallo(`el alta ya incluida se duplicó el ${yaIncluido.f}: `
         + `${chipsAntes} -> ${chipsDespues}`);
-filasSim.splice(filasSim.findIndex((f) => f.id === "baked-1"), 1);
+filasSim.splice(filasSim.findIndex((f) => f.id === idIncluido), 1);
 await globalThis.window.__calendario.recargar();
 ok("altas: la que ya viene en los datos no se duplica ("
    + chipsAntes + " eventos el " + yaIncluido.f + ")");
@@ -931,6 +945,133 @@ const itemEvE = itemDe(porId.detalle, EV.a);
 if (itemEvE.children.some((c) => c.className === "adjuntos"))
   fallo("el material del evento nuevo se pegó al evento que ya existía");
 ok("material: al crear un evento repetido, el PDF va al evento nuevo");
+
+// 14) unir una tarjeta manual (incluso embebida) con una oficial cuyo nombre
+//     y fecha son distintos. Todo se prueba contra Supabase simulado.
+const filasAntesFusion = filasSim.slice();
+const camposOrigen = { FECHA: LIBRE, ASIGNATURA: EV.a, ABREVIATURA: EV.ab,
+  EVALUACION: 'Mi dictado 8 de prueba', CONTENIDO: 'Mis cinco oraciones',
+  PROFESOR: 'Profesora de prueba', NUMERO: 'FUSION-TEST', COEFICIENTE: '',
+  PONDERACION: '', TIPO: 'Evaluación' };
+const keyManual = EV.a.toUpperCase() + '|FUSION-TEST|EVALUACIÓN#1';
+const keyOtro = EV.a.toUpperCase() + '|FUSION-TEST|EVALUACIÓN#2';
+filasSim.push(
+  { id: 'fusion-a', tipo: 'nuevo', clave: keyManual, campos: camposOrigen,
+    creado: '2026-10-27T10:00:00Z', autor: 'Prueba' },
+  { id: 'fusion-b', tipo: 'nuevo', clave: keyManual,
+    campos: { ...camposOrigen, EVALUACION: 'Otra actividad que NO debe cambiar' },
+    creado: '2026-10-27T10:01:00Z', autor: 'Prueba' },
+  { id: 'fusion-pdf-a', tipo: 'adjunto', clave: keyManual,
+    campos: { archivo: 'dictado8.pdf', nombre: 'FICHA DICTADO 8.pdf', bytes: 215947 } },
+  { id: 'fusion-pdf-comun-a', tipo: 'adjunto', clave: keyManual,
+    campos: { archivo: 'comun.pdf', nombre: 'COMUN.pdf', bytes: 100 } },
+  { id: 'fusion-pdf-comun-destino', tipo: 'adjunto', clave: EV.k,
+    campos: { archivo: 'comun.pdf', nombre: 'COMUN.pdf', bytes: 100 } },
+  { id: 'fusion-pdf-b', tipo: 'adjunto', clave: keyOtro,
+    campos: { archivo: 'otro.pdf', nombre: 'OTRA ACTIVIDAD.pdf', bytes: 200 } },
+);
+const manualEmbebida = { k: keyManual, nuevo: 'fusion-a', f: LIBRE, a: EV.a,
+  ab: EV.ab, e: camposOrigen.EVALUACION, c: camposOrigen.CONTENIDO,
+  p: camposOrigen.PROFESOR, n: 'FUSION-TEST', co: '', po: '', t: 'Evaluación' };
+window.__calendario.eventos().push(manualEmbebida);
+await window.__calendario.recargar();
+const itemPorTitulo = titulo => porId.detalle.children.find(
+  it => it.className === 'item' && it.children[1].textContent === titulo);
+const verLibre = () => porId.rejilla.children.find(c => c.dataset.fecha === LIBRE).click();
+verLibre();
+let miTarjeta = itemPorTitulo(camposOrigen.EVALUACION);
+if (!miTarjeta) fallo('no aparece la tarjeta manual embebida');
+const unir = barraDe(miTarjeta).children.find(b => b.textContent.includes('Unir con otra tarjeta'));
+if (!unir) fallo('falta Unir en una tarjeta manual');
+porId.rejilla.children.find(c => c.dataset.fecha === FECHA_EV).click();
+if (barraDe(itemDe(porId.detalle, EV.a)).children.some(b => b.textContent.includes('Unir con otra tarjeta')))
+  fallo('no debe permitir retirar una tarjeta oficial como origen de una unión');
+verLibre();
+barraDe(itemPorTitulo(camposOrigen.EVALUACION)).children.find(b => b.textContent.includes('Unir con otra tarjeta')).click();
+if (porId['m-titulo'].textContent !== 'Unir con otra tarjeta' || !porId['m-adjunto'].hidden)
+  fallo('ventana de unión incorrecta');
+porId['m-autor'].value = 'Prueba de unión';
+const postsAntesFusion = posts.length, subidasAntesFusion = subidas.length;
+porId['m-guardar'].click();
+await tick();
+if (posts.length !== postsAntesFusion || !porId['m-error'].textContent.includes('destino'))
+  fallo('unión sin elegir destino');
+const selectDestino = porId['m-fusion-destino'];
+if (selectDestino.children.some(o => o.value === keyManual || o.value === keyOtro))
+  fallo('los destinos deben ser tarjetas oficiales');
+selectDestino.value = EV.k;
+cambiar(selectDestino);
+porId['m-guardar'].click();
+await tick();
+if (posts.length !== postsAntesFusion || !porId['m-error'].textContent.includes('Confirma'))
+  fallo('unión sin confirmación explícita');
+porId['m-fusion-FECHA'].value = 'origen';
+porId['m-fusion-CONTENIDO'].value = 'origen';
+porId['m-fusion-confirmar'].checked = true;
+errorLote = true;
+porId['m-guardar'].click();
+await tick(); await tick();
+errorLote = false;
+if (porId.modal.hidden || posts.length !== postsAntesFusion)
+  fallo('falló la transacción pero se retiró la tarjeta o se guardó algo a medias');
+if (porId['m-cancelar'].disabled) fallo('debe reactivar Cancelar si falla la unión');
+if (!porId['m-error'].textContent.includes('No se pudo unir')) fallo('no informa el fallo de unión');
+ok('unión: exige destino y confirmación; un fallo de transacción no modifica nada');
+
+// Detectar una edición que llegó mientras estaba abierta la comparación.
+const lotesAntesCambio = lotes.length;
+filasSim.push({ id: 'fusion-cambio-remoto', tipo: 'correccion', clave: keyManual,
+  campos: { CONTENIDO: 'Otra persona acaba de editar' },
+  previo: { CONTENIDO: camposOrigen.CONTENIDO }, creado: '2026-10-27T11:00:00Z' });
+porId['m-guardar'].click();
+await tick(); await tick();
+if (lotes.length !== lotesAntesCambio || !porId['m-error'].textContent.includes('cambió'))
+  fallo('la unión no detectó la edición concurrente');
+filasSim.splice(filasSim.findIndex(f => f.id === 'fusion-cambio-remoto'), 1);
+await window.__calendario.recargar();
+errorFilas = true;
+porId['m-guardar'].click();
+await tick(); await tick();
+errorFilas = false;
+if (lotes.length !== lotesAntesCambio || !porId['m-error'].textContent.includes('Sin conexión'))
+  fallo('la unión debe abortar si no puede refrescar la nube');
+ok('unión: vuelve a leer la nube; no retira datos si cambiaron o falta conexión');
+
+porId['m-guardar'].click();
+await tick(); await tick();
+if (!porId.modal.hidden) fallo('no se cerró la unión: ' + porId['m-error'].textContent);
+const loteFusion = lotes.at(-1);
+const retirado = loteFusion.find(f => f.tipo === 'anula');
+const conservado = loteFusion.find(f => f.tipo === 'correccion');
+const materialCopiado = loteFusion.filter(f => f.tipo === 'adjunto');
+if (!retirado || retirado.anula !== 'fusion-a' || retirado.clave !== keyManual)
+  fallo('se debe retirar el alta original, no una corrección o el PDF');
+if (!conservado || conservado.clave !== EV.k || conservado.campos.FECHA !== LIBRE
+    || conservado.campos.CONTENIDO !== camposOrigen.CONTENIDO || 'EVALUACION' in conservado.campos)
+  fallo('no conserva los datos elegidos ni el nombre del destino');
+if (materialCopiado.length !== 1 || materialCopiado[0].clave !== EV.k
+    || materialCopiado[0].campos.archivo !== 'dictado8.pdf')
+  fallo('no copia el PDF o vuelve a copiar el que ya estaba en ambas tarjetas');
+if (subidas.length !== subidasAntesFusion) fallo('los PDF ya existentes no deben subirse de nuevo');
+if (!loteFusion.every(f => Object.keys(f).sort().join() === Object.keys(loteFusion[0]).sort().join()))
+  fallo('PostgREST exige las mismas columnas en todo el INSERT múltiple');
+if (itemPorTitulo(camposOrigen.EVALUACION)) fallo('la tarjeta manual sigue visible');
+let otraTarjeta = itemPorTitulo('Otra actividad que NO debe cambiar');
+if (!otraTarjeta || !otraTarjeta.children.some(c => c.textContent.includes('OTRA ACTIVIDAD.pdf')))
+  fallo('retirar la tarjeta cambió la identidad o el PDF de otra actividad');
+const destinoUnido = itemDe(porId.detalle, EV.a);
+if (!destinoUnido.children.some(c => c.textContent.includes('FICHA DICTADO 8.pdf')))
+  fallo('el destino no muestra el PDF transferido');
+await window.__calendario.recargar();
+verLibre();
+if (itemPorTitulo(camposOrigen.EVALUACION)) fallo('la tarjeta anulada reaparece al recargar');
+ok('unión: un solo lote conserva fecha/contenido/PDF, no duplica archivos ni altera otras tarjetas');
+ok('unión: una tarjeta manual ya embebida no reaparece al recargar');
+
+// Restablecer el simulacro para las pruebas siguientes.
+filasSim.splice(0, filasSim.length, ...filasAntesFusion);
+window.__calendario.eventos().splice(window.__calendario.eventos().indexOf(manualEmbebida), 1);
+await window.__calendario.recargar();
 
 // 10) PWA: manifest, service worker, iconos y los botones de instalar/avisos
 if (!/<link rel="manifest" href="manifest\.webmanifest">/.test(html))

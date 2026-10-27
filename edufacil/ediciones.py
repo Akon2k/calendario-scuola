@@ -242,12 +242,24 @@ def aplicar(registros: list[dict], filas: list[dict],
     conteo: dict[str, int] = {}
     for registro in base:
         conteo[clave_base(registro)] = conteo.get(clave_base(registro), 0) + 1
+    # Reservar también los ordinales de altas anuladas: quitar #2 no debe
+    # convertir #3 en #2 y llevar sus correcciones/PDF a otra tarjeta.
+    claves_altas: dict[str, str] = {}
+    ordinales: dict[str, int] = {}
+    for fila in sorted(filas, key=lambda f: str(f.get("creado") or "")):
+        if fila.get("tipo") != "nuevo" or not fila.get("id"):
+            continue
+        registro = registro_nuevo(fila.get("campos"))
+        if registro is None:
+            continue
+        b = clave_base(registro)
+        ordinales[b] = ordinales.get(b, 0) + 1
+        claves_altas[str(fila["id"])] = f"{b}#{conteo.get(b, 0) + ordinales[b]}"
     extra: list[dict] = []
     extra_claves: list[str] = []
-    nuevos_por_base: dict[str, int] = {}
     est = {"corregidas": 0, "agregadas": 0, "caducas": 0, "sin_destino": 0,
            "anuladas": sum(1 for f in filas if str(f.get("id") or "") in canceladas),
-           "avisos": []}
+            "avisos": [], "manuales": {}}
 
     for fila in activas:
         clave = str(fila.get("clave") or "").strip()
@@ -306,11 +318,11 @@ def aplicar(registros: list[dict], filas: list[dict],
             est["avisos"].append(
                 f"alta repetida, se ignora: {base_k} el {registro['FECHA']}")
             continue
-        nuevos_por_base[base_k] = nuevos_por_base.get(base_k, 0) + 1
-        k = f"{base_k}#{conteo.get(base_k, 0) + nuevos_por_base[base_k]}"
+        k = claves_altas[str(fila["id"])]
         indice[k] = registro
         extra.append(registro)
         extra_claves.append(k)
+        est["manuales"][k] = str(fila["id"])
         est["agregadas"] += 1
 
     return base + extra, claves + extra_claves, est

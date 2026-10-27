@@ -579,6 +579,21 @@ _PLANTILLA = r"""<!DOCTYPE html>
   }
   .campo textarea { min-height: 76px; resize: vertical; }
   .campo input.combo-libre { margin-top: 6px; }
+  .fusion-preview { white-space: pre-wrap; max-height: 180px; overflow: auto;
+                    margin: 8px 0; padding: 10px; border: 1px solid var(--borde);
+                    border-radius: 8px; font-size: 12.5px; color: var(--texto); }
+  .fusion-confirmacion { font-size: 13px; color: var(--texto); }
+  .fusion-confirmacion input { width: auto; margin-right: 6px; }
+  #modal.modal-modo-fusion .panel-modal {
+    display: flex; flex-direction: column; height: 92vh; height: 92dvh;
+    overflow: hidden;
+  }
+  #modal.modal-modo-fusion #m-campos {
+    display: block; min-height: 0; overflow-y: auto; flex: 1; padding-right: 4px;
+  }
+  #modal.modal-modo-fusion .panel-modal > .campo,
+  #modal.modal-modo-fusion .pie-modal { flex-shrink: 0; }
+  #modal.modal-modo-fusion .pie-modal { position: static; }
   .grid-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
   .grid-campos .ancho { grid-column: 1 / -1; }
   .pie-modal { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
@@ -1132,14 +1147,15 @@ _PLANTILLA = r"""<!DOCTYPE html>
     return {FECHA: ev.f, ASIGNATURA: ev.a, ABREVIATURA: ev.ab, EVALUACION: ev.e,
             CONTENIDO: ev.c, PROFESOR: ev.p, NUMERO: ev.n, COEFICIENTE: ev.co,
             PONDERACION: ev.po, TIPO: ev.t, DIA: diaDe(ev.f),
-            _k: ev.k, _filas: []};
+            _k: ev.k, _nuevo_id: ev.nuevo || '',
+            _filas: ev.nuevo ? [{id: ev.nuevo, autor: ''}] : []};
   }
 
   function aCorto(reg) {
     return {k: reg._k, f: reg.FECHA, a: reg.ASIGNATURA, ab: reg.ABREVIATURA,
             e: reg.EVALUACION, c: reg.CONTENIDO, p: reg.PROFESOR, n: reg.NUMERO,
             co: reg.COEFICIENTE, po: reg.PONDERACION, t: reg.TIPO,
-            filas: reg._filas || []};
+            filas: reg._filas || [], nuevo: reg._nuevo_id || ''};
   }
 
   function ordenClave(r) {
@@ -1169,6 +1185,10 @@ _PLANTILLA = r"""<!DOCTYPE html>
   function aplicarFilas(registros, filas, soloSemana) {
     var canceladas = {};
     filas.forEach(function (f) { if (f.anula) canceladas[String(f.anula)] = true; });
+    // Un alta que ya vino embebida también debe desaparecer al anularla.
+    registros = registros.filter(function (r) {
+      return !r._nuevo_id || !canceladas[String(r._nuevo_id)];
+    });
     var activas = filas.filter(function (f) {
       return f.id && !canceladas[String(f.id)] && !f.anula &&
              (f.tipo === 'correccion' || f.tipo === 'nuevo');
@@ -1177,14 +1197,26 @@ _PLANTILLA = r"""<!DOCTYPE html>
       return x < y ? -1 : x > y ? 1 : 0;
     });
 
-    var indice = {}, conteo = {};
+    var indice = {}, conteo = {}, porAlta = {};
     registros.forEach(function (r) {
       if (r._k) indice[r._k] = r;
+      if (r._nuevo_id) { porAlta[String(r._nuevo_id)] = r; return; }
       var b = claveBase(r);
       conteo[b] = (conteo[b] || 0) + 1;
     });
 
-    var extra = [], nuevos = {};
+    var extra = [], ordinales = {}, clavesAltas = {};
+    // Mismos ordinales que Python, incluyendo huecos de eventos retirados.
+    filas.slice().sort(function (a, b) {
+      return String(a.creado || '').localeCompare(String(b.creado || ''));
+    }).forEach(function (f) {
+      if (f.tipo !== 'nuevo' || !f.id) return;
+      var r = registroNuevo(f.campos);
+      if (!r) return;
+      var b = claveBase(r);
+      ordinales[b] = (ordinales[b] || 0) + 1;
+      clavesAltas[String(f.id)] = b + '#' + ((conteo[b] || 0) + ordinales[b]);
+    });
     var est = {corregidas:0, agregadas:0, caducas:0, sin_destino:0, avisos:[]};
 
     activas.forEach(function (fila) {
@@ -1240,11 +1272,14 @@ _PLANTILLA = r"""<!DOCTYPE html>
         return;
       }
       // El alta pudo quedar incorporada al generar la página (el scrapeo de la
-      // mañana ya la incluye). Se reconoce porque conserva la clave que se le
-      // dio al crearla; volver a agregarla duplicaría el evento, y con los
-      // textos sin corregir no coincidiría con la copia ya corregida.
-      var yaEnDatos = indice[clave];
-      if (yaEnDatos && String(yaEnDatos.FECHA || '') === String(reg.FECHA || '')) {
+      // mañana ya la incluye). Se reconoce por el ID de su alta, incluso si
+      // luego se corrigieron la fecha o el texto; fila.clave puede ser #1
+      // aunque a ese evento le haya correspondido #2 o #3.
+      var yaEnDatos = porAlta[String(fila.id)];
+      if (yaEnDatos) {
+        yaEnDatos._filas = (yaEnDatos._filas || []).filter(function (f) {
+          return f.id !== fila.id;
+        }).concat({id: fila.id, autor: String(fila.autor || '')});
         return;
       }
       var bk = claveBase(reg);
@@ -1258,11 +1293,12 @@ _PLANTILLA = r"""<!DOCTYPE html>
         est.avisos.push('alta repetida: ' + bk + ' el ' + reg.FECHA);
         return;
       }
-      nuevos[bk] = (nuevos[bk] || 0) + 1;
-      var k = bk + '#' + ((conteo[bk] || 0) + nuevos[bk]);
+      var k = clavesAltas[String(fila.id)];
       reg._k = k;
+      reg._nuevo_id = String(fila.id);
       reg._filas = [{id: fila.id, autor: String(fila.autor || '')}];
       indice[k] = reg;
+      porAlta[String(fila.id)] = reg;
       extra.push(reg);
       est.agregadas++;
     });
@@ -1581,7 +1617,8 @@ _PLANTILLA = r"""<!DOCTYPE html>
     if (ultima) {
       var chip = document.createElement('span');
       chip.className = 'corregido';
-      chip.textContent = '✎ corregido por ' + (ultima.autor || 'alguien');
+      chip.textContent = (reg.nuevo === ultima.id ? '＋ agregado por ' : '✎ corregido por ')
+        + (ultima.autor || 'alguien');
       barra.appendChild(chip);
 
       var deshacer = document.createElement('button');
@@ -1601,6 +1638,14 @@ _PLANTILLA = r"""<!DOCTYPE html>
       abrir(reg.t === TIPO_RESUMEN ? 'resumen' : 'correccion', reg);
     });
     barra.appendChild(editar);
+    if (reg.nuevo && reg.t !== TIPO_RESUMEN) {
+      var unir = document.createElement('button');
+      unir.className = 'mini';
+      unir.textContent = '🔗 Unir con otra tarjeta';
+      unir.title = 'Conserva la tarjeta de destino y sus PDF; retira sólo este evento agregado';
+      unir.addEventListener('click', function () { abrirFusion(reg); });
+      barra.appendChild(unir);
+    }
     return barra;
   }
 
@@ -1933,7 +1978,203 @@ _PLANTILLA = r"""<!DOCTYPE html>
   // ------------------------------------------------------------------
   // Modal de edición
   // ------------------------------------------------------------------
-  var modo = null, origen = null;
+  var modo = null, origen = null, fusion = null;
+
+  // Una unión usa un único INSERT múltiple de PostgREST (una transacción):
+  // conserva datos/PDF antes de anular el alta. No borra filas ni archivos.
+  var CAMPOS_FUSION = ['FECHA', 'EVALUACION', 'CONTENIDO', 'PROFESOR'];
+
+  function todosEventos() {
+    var eventos = [];
+    Object.keys(porDia).forEach(function (f) { eventos = eventos.concat(porDia[f]); });
+    return eventos;
+  }
+
+  function etiquetaEvento(ev) {
+    return ev.f.split('-').reverse().join('/') + ' · ' + ev.a + ' · ' + nombreSolo(ev.e);
+  }
+
+  function campoFusion(titulo, input) {
+    var label = document.createElement('label');
+    label.className = 'campo ancho';
+    var span = document.createElement('span');
+    span.textContent = titulo;
+    label.appendChild(span);
+    label.appendChild(input);
+    return label;
+  }
+
+  function elegirDestinoFusion() {
+    var detalle = document.getElementById('m-fusion-datos');
+    var select = document.getElementById('m-fusion-destino');
+    if (!fusion || !detalle || !select) return;
+    detalle.innerHTML = '';
+    fusion.destino = fusion.destinos.filter(function (ev) { return ev.k === select.value; })[0] || null;
+    if (!fusion.destino) return;
+    var destino = fusion.destino;
+    CAMPOS_FUSION.forEach(function (c) {
+      var u = UI.filter(function (x) { return x.c === c; })[0];
+      var campo = document.createElement('select');
+      campo.id = 'm-fusion-' + c;
+      ['destino', 'origen'].forEach(function (lado) {
+        var ev = lado === 'destino' ? destino : origen;
+        var v = String(ev[u.s] || '');
+        if (c === 'FECHA') v = v.split('-').reverse().join('/');
+        var op = document.createElement('option');
+        op.value = lado;
+        op.textContent = (lado === 'destino' ? 'Conservar destino: ' : 'Usar mi tarjeta: ')
+          + (v.length > 110 ? v.slice(0, 110) + '…' : v || '(vacío)');
+        campo.appendChild(op);
+      });
+      // No sobrescribir datos oficiales por defecto; completar sólo vacíos.
+      campo.value = !destino[u.s] && origen[u.s] ? 'origen' : 'destino';
+      detalle.appendChild(campoFusion(u.et, campo));
+    });
+    var comparacion = document.createElement('div');
+    comparacion.className = 'fusion-preview';
+    comparacion.textContent = 'MI TARJETA\n' + etiquetaEvento(origen) + '\n'
+      + (origen.c || 'Sin contenido') + '\n\nDESTINO\n' + etiquetaEvento(destino)
+      + '\n' + (destino.c || 'Sin contenido');
+    detalle.appendChild(comparacion);
+    var aviso = document.createElement('p');
+    aviso.className = 'nota';
+    aviso.textContent = 'Se conservarán los PDF de ambas tarjetas, sin volver a subirlos. '
+      + 'La asignatura, el número y los demás datos del destino se mantienen. '
+      + 'Al confirmar lo verán todos y podrán generarse avisos.';
+    detalle.appendChild(aviso);
+    var check = document.createElement('input');
+    check.type = 'checkbox';
+    check.id = 'm-fusion-confirmar';
+    check.checked = false;
+    var label = document.createElement('label');
+    label.className = 'fusion-confirmacion';
+    label.appendChild(check);
+    var texto = document.createElement('span');
+    texto.textContent = 'Confirmo que son la misma actividad y quiero retirar sólo mi tarjeta agregada.';
+    label.appendChild(texto);
+    detalle.appendChild(label);
+  }
+
+  function abrirFusion(reg) {
+    if (!NUBE || !reg.nuevo) return;
+    abrir('fusion', reg);
+    document.getElementById('modal').className = 'modal-modo-fusion';
+    fusion = {destinos: todosEventos().filter(function (ev) {
+      return ev.k !== reg.k && !ev.nuevo;
+    }).sort(function (a, b) {
+      var aa = nombreAsignatura(a.a) === nombreAsignatura(reg.a) ? 0 : 1;
+      var bb = nombreAsignatura(b.a) === nombreAsignatura(reg.a) ? 0 : 1;
+      var da = Math.abs(new Date(a.f).getTime() - new Date(reg.f).getTime());
+      var db = Math.abs(new Date(b.f).getTime() - new Date(reg.f).getTime());
+      return aa - bb || da - db || a.k.localeCompare(b.k);
+    }), destino: null};
+    document.getElementById('m-titulo').textContent = 'Unir con otra tarjeta';
+    document.getElementById('m-guardar').textContent = 'Confirmar unión';
+    document.getElementById('m-adjunto').hidden = true;
+    var cont = document.getElementById('m-campos');
+    cont.innerHTML = '';
+    var nota = document.createElement('p');
+    nota.className = 'nota ancho';
+    nota.textContent = 'Tarjeta agregada: ' + etiquetaEvento(reg)
+      + '. Elige la tarjeta oficial correspondiente; no se une automáticamente por nombre.';
+    cont.appendChild(nota);
+    var select = document.createElement('select');
+    select.id = 'm-fusion-destino';
+    var vacio = document.createElement('option');
+    vacio.value = '';
+    vacio.textContent = '— elegir tarjeta que se conservará —';
+    select.appendChild(vacio);
+    fusion.destinos.forEach(function (ev) {
+      var op = document.createElement('option');
+      op.value = ev.k;
+      op.textContent = etiquetaEvento(ev);
+      select.appendChild(op);
+    });
+    select.value = '';
+    select.addEventListener('change', elegirDestinoFusion);
+    cont.appendChild(campoFusion('Tarjeta de destino', select));
+    var detalle = document.createElement('div');
+    detalle.id = 'm-fusion-datos';
+    detalle.className = 'ancho';
+    cont.appendChild(detalle);
+    if (!fusion.destinos.length) errorModal('Todavía no hay tarjetas oficiales para elegir.');
+  }
+
+  function guardarFusion() {
+    if (!NUBE || !fusion || !origen || !origen.nuevo) return;
+    var autor = nombreAutor();
+    if (!autor) { errorModal('Escribe tu nombre para registrar la unión.'); return; }
+    if (!fusion.destino) { errorModal('Elige la tarjeta de destino.'); return; }
+    var check = document.getElementById('m-fusion-confirmar');
+    if (!check || !check.checked) { errorModal('Confirma que son la misma actividad.'); return; }
+    var fuente = origen, destino = fusion.destino, campos = {}, previo = {};
+    CAMPOS_FUSION.forEach(function (c) {
+      var u = UI.filter(function (x) { return x.c === c; })[0];
+      var sel = document.getElementById('m-fusion-' + c);
+      var valor = String((sel.value === 'origen' ? fuente : destino)[u.s] || '');
+      if (valor !== String(destino[u.s] || '')) {
+        campos[c] = valor;
+        previo[c] = String(destino[u.s] || '');
+      }
+    });
+    var boton = document.getElementById('m-guardar');
+    if (boton.disabled) return;
+    boton.disabled = true;
+    var cancelar = document.getElementById('m-cancelar');
+    if (cancelar) cancelar.disabled = true;
+    errorModal('');
+    almacenar('edufacil-autor', autor);
+    // Una copia antigua de la página no debe retirar una tarjeta que acaba
+    // de cambiar otra persona. Recargar y comparar antes del INSERT atómico.
+    cargarFilas().then(function (ok) {
+      if (!ok) throw new Error('Sin conexión: no se unió ninguna tarjeta.');
+      var eventos = todosEventos();
+      var actual = eventos.filter(function (ev) { return ev.nuevo === fuente.nuevo; })[0];
+      var objetivo = eventos.filter(function (ev) { return ev.k === destino.k && !ev.nuevo; })[0];
+      var alta = filasNube.filter(function (f) { return f.id === fuente.nuevo && f.tipo === 'nuevo'; })[0];
+      if (!actual || !objetivo || !alta) throw new Error('Una tarjeta ya no está disponible. Cierra y vuelve a abrir la unión.');
+      var cambio = UI.some(function (u) {
+        return String(actual[u.s] || '') !== String(fuente[u.s] || '')
+          || String(objetivo[u.s] || '') !== String(destino[u.s] || '');
+      });
+      if (cambio) throw new Error('Una tarjeta cambió mientras elegías. Cierra y revisa nuevamente.');
+      var lote = [], archivos = {};
+      adjuntosDe(objetivo.k).forEach(function (a) { archivos[a.archivo] = true; });
+      adjuntosDe(actual.k).forEach(function (a) {
+        if (archivos[a.archivo]) return;
+        archivos[a.archivo] = true;
+        lote.push({tipo: 'adjunto', clave: objetivo.k,
+          campos: {archivo: a.archivo, nombre: a.nombre, bytes: a.bytes}});
+      });
+      if (Object.keys(campos).length) lote.push({tipo: 'correccion', clave: objetivo.k,
+        campos: campos, previo: previo});
+      lote.push({tipo: 'anula', clave: actual.k, anula: alta.id,
+        campos: {fusion_destino: objetivo.k}});
+      // Todos los objetos llevan las mismas columnas para PostgREST.
+      lote = lote.map(function (f) {
+        return {tipo: f.tipo, clave: f.clave, campos: f.campos || {},
+          previo: f.previo || {}, anula: f.anula || null, autor: autor, token: token()};
+      });
+      return enviar(lote).then(function (hechas) {
+        if (!Array.isArray(hechas) || hechas.length !== lote.length) {
+          throw new Error('No se pudo confirmar el resultado. Recarga antes de volver a intentar.');
+        }
+        filasNube = filasNube.concat(hechas);
+        reconstruir();
+        elegida = campos.FECHA || objetivo.f;
+        var p = elegida.split('-');
+        anio = Number(p[0]); mes = Number(p[1]) - 1;
+        cerrarModal();
+        repintar();
+        estado('Tarjetas unidas · PDF conservados', 'ok');
+      });
+    }).catch(function (err) {
+      errorModal('No se pudo unir: ' + String(err.message || err).slice(0, 180));
+    }).then(function () {
+      boton.disabled = false;
+      if (cancelar) cancelar.disabled = false;
+    });
+  }
 
   // ------------------------------------------------------------------
   // Material adjunto (PDF) de cada actividad
@@ -1954,7 +2195,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
     }).map(function (f) {
       var c = (f.campos && typeof f.campos === 'object') ? f.campos : {};
       return {id: f.id, archivo: String(c.archivo || ''),
-              nombre: String(c.nombre || 'material.pdf')};
+              nombre: String(c.nombre || 'material.pdf'), bytes: Number(c.bytes) || 0};
     }).filter(function (a) { return !!a.archivo; });
   }
 
@@ -2094,8 +2335,13 @@ _PLANTILLA = r"""<!DOCTYPE html>
     }
     modo = null;
     origen = null;
+    fusion = null;
     adjuntoElegido = null;
     combos = {};
+    var adjunto = document.getElementById('m-adjunto');
+    if (adjunto) adjunto.hidden = false;
+    var guardar = document.getElementById('m-guardar');
+    if (guardar) guardar.textContent = 'Guardar';
     errorModal('');
   }
 
@@ -2195,6 +2441,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
   }
 
   function guardarModal() {
+    if (modo === 'fusion') { guardarFusion(); return; }
     if (!NUBE || (modo !== 'nuevo' && modo !== 'correccion' && modo !== 'resumen')) return;
     var autor = nombreAutor();
     if (!autor) {
@@ -3150,7 +3397,8 @@ def a_html(registros: list[dict], ruta: Path,
            nube: ConfigNube | None = None,
            claves: list[str] | None = None,
            avisos_clave: str | None = None,
-           asignaturas=None) -> Path:
+           asignaturas=None,
+           manuales: dict[str, str] | None = None) -> Path:
     """Escribe `calendario.html` (autocontenido, se abre con doble clic).
 
     Cada evento lleva su clave de identidad ``k`` (para poder corregirlo desde
@@ -3158,7 +3406,9 @@ def a_html(registros: list[dict], ruta: Path,
     leer y escribir correcciones en vivo. Con ``avisos_clave`` (llave pública
     VAPID) se habilita el botón «🔔 Avisos». ``asignaturas`` es el catálogo
     real del colegio (``[(asignatura, código EFYS)]``) que alimenta los combos
-    del editor; si falta se usa el de ``edufacil/asignaturas.py``. Junto al
+    del editor; si falta se usa el de ``edufacil/asignaturas.py``. ``manuales``
+    empareja clave de evento e ID de alta para reconocer y retirar las tarjetas
+    manuales que ya quedaron embebidas en el HTML. Junto al
     HTML siempre quedan `manifest.webmanifest`, `sw.js` y los iconos (ver
     `edufacil/pwa.py`).
     """
@@ -3193,6 +3443,7 @@ def a_html(registros: list[dict], ruta: Path,
         "eventos": [
             {
                 "k": k,
+                "nuevo": (manuales or {}).get(k, ""),
                 "f": str(r.get("FECHA") or ""),
                 "a": str(r.get("ASIGNATURA") or ""),
                 "ab": str(r.get("ABREVIATURA") or ""),
