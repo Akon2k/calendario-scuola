@@ -399,6 +399,8 @@ instalar_tarea.bat /eliminar   # la quita
 ```
 
 Corre `tarea.bat` en segundo plano y el resultado queda en `logs/tarea.log`.
+La tarea principal se llama `CalendarioEvaScuolaTarjetas` (antes `CalendarioEvaScuola`:
+al reinstalar, el instalador borra la vieja para que no corra duplicada).
 El mismo instalador crea una segunda tarea, `CalendarioEvaScuolaAvisos`, que
 cada hora de 08:00 a 22:00 corre sólo `avisos_dia.bat` (sin scrapeo ni
 publicación) para anunciar una corrección el mismo día que se hizo; su

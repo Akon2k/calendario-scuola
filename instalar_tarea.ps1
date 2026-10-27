@@ -8,16 +8,19 @@ param(
     [switch]$Eliminar
 )
 
-$nombre = "CalendarioEvaScuola"
+$nombre = "CalendarioEvaScuolaTarjetas"
+# Nombre anterior: si sigue registrado, la corrida se duplicaria cinco veces al dia.
+$nombreAnterior = "CalendarioEvaScuola"
 $nombreAvisos = "CalendarioEvaScuolaAvisos"
 $carpeta = Split-Path -Parent $MyInvocation.MyCommand.Path
 $bat = Join-Path $carpeta "tarea.bat"
 $batAvisos = Join-Path $carpeta "avisos_dia.bat"
 
 if ($Eliminar) {
-    Unregister-ScheduledTask -TaskName $nombre -Confirm:$false -ErrorAction SilentlyContinue
-    Unregister-ScheduledTask -TaskName $nombreAvisos -Confirm:$false -ErrorAction SilentlyContinue
-    Write-Host "Tareas '$nombre' y '$nombreAvisos' eliminadas."
+    foreach ($n in @($nombre, $nombreAnterior, $nombreAvisos)) {
+        Unregister-ScheduledTask -TaskName $n -Confirm:$false -ErrorAction SilentlyContinue
+    }
+    Write-Host "Tareas '$nombre', '$nombreAnterior' y '$nombreAvisos' eliminadas."
     exit 0
 }
 
@@ -39,6 +42,11 @@ $accion = New-ScheduledTaskAction -Execute $conhost `
     -Argument "--headless $cmdExe /d /c `"$bat`"" `
     -WorkingDirectory $carpeta
 $disparos = @($Horas | ForEach-Object { New-ScheduledTaskTrigger -Daily -At $_ })
+# Migracion: quita la tarea con el nombre viejo antes de crear la nueva.
+if (Get-ScheduledTask -TaskName $nombreAnterior -ErrorAction SilentlyContinue) {
+    Unregister-ScheduledTask -TaskName $nombreAnterior -Confirm:$false
+    Write-Host "Tarea anterior '$nombreAnterior' eliminada."
+}
 Register-ScheduledTask -TaskName $nombre -Action $accion -Trigger $disparos -Force | Out-Null
 
 Write-Host "Tarea '$nombre' creada."
