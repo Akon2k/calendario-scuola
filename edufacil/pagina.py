@@ -23,6 +23,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+from .asignaturas import catalogo as catalogo_asignaturas
 from .ediciones import ConfigNube, claves_unicas
 from .ics import texto_ics
 from .pwa import copiar_recursos
@@ -48,6 +49,8 @@ NOMBRES_ASIGNATURA = {
     "LENGUAJE Y COMUNICACIÓN": "Lenguaje",
     "MATEMÁTICA": "Matemática",
     "MÚSICA": "Música",
+    "ORIENTACIÓN": "Orientación",
+    "RELIGIÓN": "Religión",
     "TECNOLOGÍA": "Tecnología",
 }
 
@@ -575,6 +578,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
     border-radius: 8px; color: var(--texto); background: var(--input-fondo);
   }
   .campo textarea { min-height: 76px; resize: vertical; }
+  .campo input.combo-libre { margin-top: 6px; }
   .grid-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
   .grid-campos .ancho { grid-column: 1 / -1; }
   .pie-modal { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
@@ -903,12 +907,16 @@ _PLANTILLA = r"""<!DOCTYPE html>
   var MAXIMOS = {ASIGNATURA:80, ABREVIATURA:12, EVALUACION:300, CONTENIDO:4000,
                  PROFESOR:120, NUMERO:20, COEFICIENTE:12, PONDERACION:12};
   var TIPOS = ['Evaluación', 'Sub-evaluación'];
+  // Catálogo del colegio para los combos del editor: [{a: 'IDIOMA…', ab: 'IEXIN'}].
+  // Viene incrustado desde Python; si falta, se arma con lo que ya hay.
+  var CATALOGO = (D.asignaturas || []).slice();
+  var combos = {};
 
   // Campo largo (de la nube) <-> campo corto (del JSON embebido)
   var UI = [
     {c:'FECHA',       s:'f',  et:'Fecha',                tipo:'date', req:true},
-    {c:'ASIGNATURA',  s:'a',  et:'Asignatura',           req:true},
-    {c:'ABREVIATURA', s:'ab', et:'Abreviatura (EFYS)'},
+    {c:'ASIGNATURA',  s:'a',  et:'Asignatura',           req:true, combo:'asignatura'},
+    {c:'ABREVIATURA', s:'ab', et:'Abreviatura (EFYS)',   combo:'abreviatura'},
     {c:'EVALUACION',  s:'e',  et:'Nombre de la evaluación', req:true, ancho:true},
     {c:'CONTENIDO',   s:'c',  et:'Contenido',            tipo:'textarea', ancho:true},
     {c:'PROFESOR',    s:'p',  et:'Profesor'},
@@ -959,6 +967,148 @@ _PLANTILLA = r"""<!DOCTYPE html>
     var inicial = palabras.slice(0, 5).map(function (p) { return p[0]; })
                     .join('').toUpperCase();
     return inicial || 'EV';
+  }
+
+  // ------------------------------------------------------------------
+  // Combos de asignatura y abreviatura (EFYS)
+  // ------------------------------------------------------------------
+  function catalogoAsignaturas() {
+    var lista = [], vistos = {};
+    CATALOGO.forEach(function (x) {
+      var a = String((x && x.a) || '').trim();
+      var ab = String((x && x.ab) || '').trim();
+      if (!a || vistos[a.toUpperCase()]) return;
+      vistos[a.toUpperCase()] = {a: a, ab: ab};
+      lista.push(vistos[a.toUpperCase()]);
+    });
+    lista.sort(function (x, y) { return x.a.localeCompare(y.a, 'es'); });
+    return lista;
+  }
+
+  // Crea el <select> del campo con su opción «Otra…» (que abre un texto libre).
+  function crearCombo(u, valor) {
+    var esAsig = u.combo === 'asignatura';
+    var actual = String(valor || '').trim();
+    var catalogo = catalogoAsignaturas();
+    var sel = document.createElement('select');
+    var vacio = document.createElement('option');
+    vacio.value = '';
+    vacio.textContent = esAsig ? '— elegir asignatura —' : '— se completa sola —';
+    sel.appendChild(vacio);
+
+    var vistos = {}, ops = [];
+    catalogo.forEach(function (x) {
+      var v = esAsig ? x.a : x.ab;
+      if (!v || vistos[v.toUpperCase()]) return;
+      vistos[v.toUpperCase()] = true;
+      ops.push({v: v, t: (esAsig && x.ab) ? (x.a + '  ·  ' + x.ab) : v});
+    });
+    // Un dato viejo que no esté en el catálogo igual se puede ver y conservar.
+    if (actual && !vistos[actual.toUpperCase()]) {
+      ops.push({v: actual, t: actual + '  (fuera del catálogo)'});
+    }
+    ops.forEach(function (o) {
+      var op = document.createElement('option');
+      op.value = o.v;
+      op.textContent = o.t;
+      sel.appendChild(op);
+    });
+
+    var otra = document.createElement('option');
+    otra.value = '__otra__';
+    otra.textContent = esAsig ? '✏️ Otra asignatura…' : '✏️ Otro código…';
+    sel.appendChild(otra);
+    sel.value = actual;
+
+    var extra = document.createElement('input');
+    extra.type = 'text';
+    extra.id = 'm-' + u.c + '-otra';
+    extra.className = 'combo-libre';
+    extra.placeholder = esAsig ? 'Escribe la asignatura' : 'Escribe el código EFYS';
+    extra.hidden = true;
+    return {sel: sel, extra: extra};
+  }
+
+  // Une los dos combos: elegir asignatura propone su código EFYS y elegir un
+  // código selecciona la asignatura dueña. «Otra…» deja escribir a mano.
+  function conectarCombos() {
+    var asig = combos.ASIGNATURA, abrev = combos.ABREVIATURA;
+    if (!asig || !abrev) return;
+    var catalogo = catalogoAsignaturas();
+    var autoAb = '';
+
+    function porNombre(nombre) {
+      for (var i = 0; i < catalogo.length; i++) {
+        if (catalogo[i].a === nombre) return catalogo[i];
+      }
+      return null;
+    }
+    function porCodigo(codigo) {
+      for (var i = 0; i < catalogo.length; i++) {
+        if (catalogo[i].ab === codigo) return catalogo[i];
+      }
+      return null;
+    }
+    function fijar(c, valor) {
+      c.sel.value = valor;
+      c.extra.hidden = true;
+      c.extra.value = '';
+    }
+    function libre(c, valor) {
+      c.sel.value = '__otra__';
+      c.extra.hidden = false;
+      c.extra.value = valor || '';
+    }
+    function codigoActual() {
+      return abrev.extra.hidden ? String(abrev.sel.value || '')
+                                : String(abrev.extra.value || '');
+    }
+
+    asig.sel.addEventListener('change', function () {
+      var v = String(asig.sel.value || '');
+      autoAb = '';
+      if (v === '__otra__') {
+        asig.extra.hidden = false;
+        asig.extra.value = '';
+        libre(abrev, '');
+        return;
+      }
+      asig.extra.hidden = true;
+      asig.extra.value = '';
+      if (!v) { fijar(abrev, ''); return; }
+      var par = porNombre(v);
+      if (par && par.ab) { fijar(abrev, par.ab); autoAb = par.ab; }
+    });
+
+    asig.extra.addEventListener('input', function () {
+      var sugerido = abreviar(String(asig.extra.value || ''));
+      var actual = codigoActual();
+      if (!actual || actual === autoAb) {
+        libre(abrev, sugerido);
+        autoAb = sugerido;
+      }
+    });
+
+    abrev.sel.addEventListener('change', function () {
+      var v = String(abrev.sel.value || '');
+      autoAb = '';
+      if (v === '__otra__') {
+        abrev.extra.hidden = false;
+        if (!abrev.extra.value) {
+          abrev.extra.value = abreviar(asig.sel.value === '__otra__'
+            ? asig.extra.value : '');
+        }
+        return;
+      }
+      abrev.extra.hidden = true;
+      abrev.extra.value = '';
+      var par = v ? porCodigo(v) : null;
+      if (par) {
+        asig.sel.value = par.a;
+        asig.extra.hidden = true;
+        asig.extra.value = '';
+      }
+    });
   }
 
   function diaDe(fechaIso) {
@@ -1945,6 +2095,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
     modo = null;
     origen = null;
     adjuntoElegido = null;
+    combos = {};
     errorModal('');
   }
 
@@ -1980,8 +2131,13 @@ _PLANTILLA = r"""<!DOCTYPE html>
       titulo2.textContent = etiqueta;
       label.appendChild(titulo2);
 
-      var input;
-      if (u.tipo === 'textarea') {
+      var input, extra = null;
+      if (u.combo) {
+        var combo = crearCombo(u, origen ? String(origen[u.s] || '') : '');
+        input = combo.sel;
+        extra = combo.extra;
+        combos[u.c] = combo;
+      } else if (u.tipo === 'textarea') {
         input = document.createElement('textarea');
       } else if (u.tipo === 'select') {
         input = document.createElement('select');
@@ -2003,11 +2159,16 @@ _PLANTILLA = r"""<!DOCTYPE html>
           input.placeholder = 'Detalle de las evaluaciones de la próxima semana';
         }
       }
-      if (modo === 'nuevo' && u.c === 'FECHA') input.value = elegida;
-      else if (origen) input.value = origen[u.s] || '';
+      if (!u.combo) {
+        if (modo === 'nuevo' && u.c === 'FECHA') input.value = elegida;
+        else if (origen) input.value = origen[u.s] || '';
+      }
       label.appendChild(input);
+      if (extra) label.appendChild(extra);
       cont.appendChild(label);
     });
+
+    conectarCombos();
 
     adjuntoElegido = null;
     pintarAdjuntosModal();
@@ -2024,6 +2185,10 @@ _PLANTILLA = r"""<!DOCTYPE html>
     camposUsados().forEach(function (u) {
       var el = document.getElementById('m-' + u.c);
       var valor = el && el.value !== undefined && el.value !== null ? el.value : '';
+      if (u.combo && String(valor) === '__otra__') {
+        var texto = document.getElementById('m-' + u.c + '-otra');
+        valor = texto && texto.value !== undefined ? texto.value : '';
+      }
       salida[u.c] = String(valor).trim();
     });
     return salida;
@@ -2984,14 +3149,18 @@ def a_html(registros: list[dict], ruta: Path,
            recordatorio_min: int | None = 1440,
            nube: ConfigNube | None = None,
            claves: list[str] | None = None,
-           avisos_clave: str | None = None) -> Path:
+           avisos_clave: str | None = None,
+           asignaturas=None) -> Path:
     """Escribe `calendario.html` (autocontenido, se abre con doble clic).
 
     Cada evento lleva su clave de identidad ``k`` (para poder corregirlo desde
     la página) y, si viene ``nube``, la página queda conectada a Supabase para
     leer y escribir correcciones en vivo. Con ``avisos_clave`` (llave pública
-    VAPID) se habilita el botón «🔔 Avisos». Junto al HTML siempre quedan
-    `manifest.webmanifest`, `sw.js` y los iconos (ver `edufacil/pwa.py`).
+    VAPID) se habilita el botón «🔔 Avisos». ``asignaturas`` es el catálogo
+    real del colegio (``[(asignatura, código EFYS)]``) que alimenta los combos
+    del editor; si falta se usa el de ``edufacil/asignaturas.py``. Junto al
+    HTML siempre quedan `manifest.webmanifest`, `sw.js` y los iconos (ver
+    `edufacil/pwa.py`).
     """
     ruta = _asegurar(ruta)
 
@@ -3019,6 +3188,8 @@ def a_html(registros: list[dict], ruta: Path,
         # la paleta viaja para que una asignatura agregada por la gente pueda
         # recibir color sin romper los que ya existen
         "paleta": PALETA,
+        # catálogo del colegio para los combos del editor (asignatura + EFYS)
+        "asignaturas": catalogo_asignaturas(asignaturas),
         "eventos": [
             {
                 "k": k,

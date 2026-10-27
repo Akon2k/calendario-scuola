@@ -365,6 +365,10 @@ if (!/align-items:\s*stretch/.test(reglaMain))
   fallo("el detalle debe estirarse a la altura del calendario: " + reglaMain);
 ok("detalle emparejado con la altura del calendario");
 const tick = () => new Promise((r) => setTimeout(r, 30));
+const disparar = (el, tipo) => {
+  (el.listeners[tipo] || []).forEach((fn) => fn({ currentTarget: el, target: el }));
+};
+const cambiar = (el) => disparar(el, "change");
 const itemDe = (caja, asig) => caja.children.find(
   (c) => c.children && c.children[0] && c.children[0].textContent === asig);
 const barraDe = (item) => item && item.children.find(
@@ -683,6 +687,49 @@ for (const c of ["FECHA", "ASIGNATURA", "EVALUACION", "NUMERO", "PROFESOR",
 }
 porId["m-autor"].value = "Rafaela";
 porId["m-FECHA"].value = LIBRE;
+
+// 8a) combos: asignaturas existentes + su código EFYS
+if (porId["m-ASIGNATURA"].tagName.toUpperCase() !== "SELECT") fallo("ASIGNATURA no es un combo");
+if (porId["m-ABREVIATURA"].tagName.toUpperCase() !== "SELECT") fallo("ABREVIATURA no es un combo");
+const opcionesAsig = porId["m-ASIGNATURA"].children.map((o) => o.textContent);
+const opcionesAbrev = porId["m-ABREVIATURA"].children.map((o) => o.textContent);
+if (!opcionesAsig.some((t) => t.includes("IDIOMA EXTRANJERO (INGLÉS)") && t.includes("IEXIN")))
+  fallo("el combo de asignaturas no trae Inglés · IEXIN: " + opcionesAsig.join(" | "));
+if (!opcionesAbrev.includes("IEXIN")) fallo("el combo de EFYS no trae IEXIN");
+if (!opcionesAbrev.includes("ORIEN"))
+  fallo("falta una asignatura sin evaluaciones (ORIENTACIÓN · ORIEN)");
+if (!Array.isArray(datos.asignaturas) || datos.asignaturas.length < 12)
+  fallo("el catálogo embebido tiene " + (datos.asignaturas || []).length + " asignaturas");
+ok("combos: " + datos.asignaturas.length + " asignaturas con su código EFYS");
+
+porId["m-ASIGNATURA"].value = "IDIOMA EXTRANJERO (INGLÉS)";
+cambiar(porId["m-ASIGNATURA"]);
+if (porId["m-ABREVIATURA"].value !== "IEXIN")
+  fallo("Inglés no propuso IEXIN: " + porId["m-ABREVIATURA"].value);
+ok("elegir asignatura propone su código: INGLÉS -> IEXIN");
+
+porId["m-ABREVIATURA"].value = "EFYS";
+cambiar(porId["m-ABREVIATURA"]);
+if (porId["m-ASIGNATURA"].value !== "EDUCACIÓN FÍSICA Y SALUD")
+  fallo("EFYS no seleccionó su asignatura: " + porId["m-ASIGNATURA"].value);
+ok("elegir código selecciona la asignatura: EFYS -> EDUCACIÓN FÍSICA");
+
+porId["m-ASIGNATURA"].value = "__otra__";
+cambiar(porId["m-ASIGNATURA"]);
+const otraAsig = porId["m-ASIGNATURA-otra"];
+if (!otraAsig || otraAsig.hidden) fallo("«Otra asignatura…» no mostró el texto libre");
+otraAsig.value = "ROBÓTICA";
+disparar(otraAsig, "input");
+if (porId["m-ABREVIATURA-otra"].hidden || porId["m-ABREVIATURA-otra"].value !== "R")
+  fallo("la asignatura libre no propuso sus iniciales: "
+        + porId["m-ABREVIATURA-otra"].value);
+ok("«Otra…» permite una asignatura nueva y propone R");
+
+porId["m-ASIGNATURA"].value = "MATEMÁTICA";
+cambiar(porId["m-ASIGNATURA"]);
+if (porId["m-ABREVIATURA"].value !== "MATEM")
+  fallo("MATEMÁTICA no propuso MATEM: " + porId["m-ABREVIATURA"].value);
+
 porId["m-ASIGNATURA"].value = "MATEMÁTICA";
 porId["m-EVALUACION"].value = "Prueba agregada por la página";
 porId["m-NUMERO"].value = "T9";

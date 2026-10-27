@@ -126,6 +126,11 @@ Lo que puede hacer quien la abre:
   todos los que abran la página.
 - **Editar resumen** en el sábado: cambia el título o el cuerpo del resumen.
 - **Nuevo evento** (arriba): agrega una evaluación que EduFácil no tenga.
+  **Asignatura** y **Abreviatura (EFYS)** son combos con las asignaturas del
+  colegio y su código (`IDIOMA EXTRANJERO (INGLÉS)` → `IEXIN`): al elegir una
+  se completa el código, y al revés. El catálogo sale del propio EduFácil en
+  cada corrida, así que una asignatura nueva aparece sola; «Otra…» permite
+  escribir una que todavía no esté.
 - **Deshacer**: anula una corrección sin borrar nada; queda quién la anuló.
 - **Descargar .ics**: baja el calendario para Google Calendar o Outlook web.
 - **Instalar app**: la convierte en una app del celular o de la PC.

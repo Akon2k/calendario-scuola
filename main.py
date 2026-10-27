@@ -225,6 +225,16 @@ def obtener_registros(cliente: EdufacilClient, args) -> tuple[list[dict], dict]:
     meses, subsectores = cliente.meses_y_subsectores(curso, sxc)
     meta["ano_escolar"] = f"{meses[0]['anio']}-{meses[-1]['anio']}" if meses else ""
     meta["meses"] = [f"{m['mes_nombre']} {m['anio']}" for m in meses]
+    # Catálogo real del colegio (incluye asignaturas sin evaluaciones todavía):
+    # alimenta los combos de asignatura + código EFYS del editor de la página.
+    catalogo = set()
+    for ficha in (subsectores or {}).values():
+        if not isinstance(ficha, dict):
+            continue
+        nombre = str(ficha.get("subsector") or "").strip()
+        if nombre:
+            catalogo.add((nombre, str(ficha.get("abreviatura") or "").strip()))
+    meta["asignaturas"] = sorted(catalogo)
     registrar("Año escolar: " + ", ".join(meta["meses"]))
 
     dias: list[dict] = []
@@ -350,7 +360,8 @@ def main() -> int:
                               recordatorio_min=recordatorio,
                               nube=nube,
                               claves=claves + claves_resumen,
-                              avisos_clave=clave_avisos)
+                              avisos_clave=clave_avisos,
+                              asignaturas=meta.get("asignaturas"))
             else:
                 registrar(f"Formato desconocido, se omite: {formato}")
                 continue
