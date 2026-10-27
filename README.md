@@ -260,6 +260,42 @@ Si una versión vieja quedó a medias: `drop table if exists public.ediciones;`
 y vuelve a pegar el bloque. Para limpiar las filas de prueba (sólo mientras
 nadie haya corregido nada): `truncate table public.ediciones;`
 
+### Material de las actividades (PDF)
+
+Cada evaluación puede llevar su PDF («material»). El botón **Elegir PDF** está
+dentro de la ventana de edición; al Guardar se sube el archivo y se registra
+el enlace en la misma tabla `ediciones` (tipo `adjunto`). El enlace aparece en
+el detalle del día. Se pega una sola vez, después de las tablas de arriba:
+
+```sql
+-- sql/adjuntos.sql
+alter table public.ediciones drop constraint if exists ediciones_tipo_check;
+alter table public.ediciones add constraint ediciones_tipo_check
+  check (tipo in ('correccion','nuevo','anula','adjunto'));
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('adjuntos', 'adjuntos', true, 8388608, array['application/pdf'])
+on conflict (id) do update
+  set public = true,
+      file_size_limit = 8388608,
+      allowed_mime_types = array['application/pdf'];
+
+drop policy if exists "adjuntos: lectura" on storage.objects;
+create policy "adjuntos: lectura" on storage.objects
+  for select using (bucket_id = 'adjuntos');
+
+drop policy if exists "adjuntos: subida" on storage.objects;
+create policy "adjuntos: subida" on storage.objects
+  for insert with check (
+    bucket_id = 'adjuntos'
+    and lower(right(name, 4)) = '.pdf'
+  );
+```
+
+El bucket es público (cualquiera puede leer los PDF), y sólo admite PDF de
+hasta 8 MB. Quitar un material no borra el archivo: agrega un `anula`, como el
+resto de la bitácora.
+
 ### Cómo se evitan los problemas
 
 - **Identidad con ordinal** (`MATEMÁTICA|1|EVALUACIÓN#2`): el mismo número se

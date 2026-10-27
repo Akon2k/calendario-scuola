@@ -537,6 +537,25 @@ _PLANTILLA = r"""<!DOCTYPE html>
   .corregido { font-size: 11.5px; color: var(--corregido-texto); background: var(--corregido-fondo);
                border: 1px solid var(--corregido-borde); border-radius: 999px; padding: 2px 8px; }
   button.mini { font-size: 12px; padding: 3px 9px; border-radius: 999px; }
+  /* material adjunto (PDF) */
+  .adjuntos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .adjunto-link { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px;
+                  text-decoration: none; color: var(--verde-texto); background: var(--tarjeta-secundaria);
+                  border: 1px solid var(--borde); border-radius: 999px; padding: 3px 10px; }
+  .adjunto-link:hover { text-decoration: underline; }
+  .adjunto-caja { margin-top: 12px; border-top: 1px dashed var(--borde); padding-top: 10px; }
+  .adjunto-cabecera { display: flex; align-items: baseline; justify-content: space-between;
+                      gap: 8px; font-size: 13px; font-weight: 600; }
+  .adjunto-nota { font-size: 11.5px; font-weight: 400; color: var(--suave); }
+  .adjunto-item { display: flex; align-items: center; gap: 8px; font-size: 12.5px;
+                  padding: 4px 0; color: var(--texto); }
+  .adjunto-item .nombre { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .adjunto-item a { color: var(--verde-texto); }
+  .adjunto-vacio { font-size: 12px; color: var(--suave); padding: 4px 0; }
+  .adjunto-boton { display: inline-block; margin-top: 6px; cursor: pointer; font-size: 13px;
+                   padding: 7px 12px; border-radius: 9px; border: 1px dashed var(--borde);
+                   background: var(--tarjeta-secundaria); color: var(--texto); }
+  .adjunto-boton:hover { border-color: var(--verde); }
   #modal {
     position: fixed; inset: 0; background: var(--modal-overlay);
     display: flex; align-items: center; justify-content: center;
@@ -767,6 +786,15 @@ _PLANTILLA = r"""<!DOCTYPE html>
              placeholder="Quien corrige o agrega (queda en la bitácora)">
     </label>
     <div id="m-campos" class="grid-campos"></div>
+    <div class="adjunto-caja" id="m-adjunto">
+      <div class="adjunto-cabecera">
+        <span>&#128206; Material de la actividad</span>
+        <span class="adjunto-nota">PDF &middot; hasta 8 MB</span>
+      </div>
+      <div id="m-adjunto-lista"></div>
+      <label class="adjunto-boton" for="m-adjunto-archivo">Elegir PDF</label>
+      <input id="m-adjunto-archivo" type="file" accept="application/pdf,.pdf" hidden>
+    </div>
     <p class="modal-error" id="m-error"></p>
     <div class="pie-modal">
       <button id="m-cancelar">Cancelar</button>
@@ -794,7 +822,9 @@ _PLANTILLA = r"""<!DOCTYPE html>
       semana que viene, con una línea en blanco entre cada fecha.</li>
     <li><strong>Corregir o agregar:</strong> en cada evento están
       <em>&#9998; Editar</em> y <em>&#65291; Nuevo evento</em>: escribes tu nombre,
-      eliges el campo, Guardar — y el cambio se ve al instante para todos.</li>
+      eliges el campo, Guardar — y el cambio se ve al instante para todos.
+      En esa misma ventana puedes <strong>adjuntar el material en PDF</strong>
+      (hasta 8 MB): el enlace queda en el detalle del día.</li>
     <li><strong>Conservar una copia:</strong> <em>&#11015; Descargar .ics</em> entrega
       el archivo sólo si lo pulsas; se importa con Google Calendar
       (<em>Ajustes &#8594; Importar y exportar</em>), Outlook web o el iPhone.</li>
@@ -1368,6 +1398,8 @@ _PLANTILLA = r"""<!DOCTYPE html>
         cont.textContent = ev.c;
         bloque.appendChild(cont);
       }
+      var adjs = adjuntosDe(ev.k);
+      if (adjs.length) bloque.appendChild(listaAdjuntos(adjs));
       if (NUBE) bloque.appendChild(barraAcciones(ev, ev.e));
       caja.appendChild(bloque);
     });
@@ -1382,6 +1414,8 @@ _PLANTILLA = r"""<!DOCTYPE html>
       var pre = document.createElement('pre');
       pre.textContent = resumen.c || '';
       caja2.appendChild(pre);
+      var adjsResumen = adjuntosDe(resumen.k);
+      if (adjsResumen.length) caja2.appendChild(listaAdjuntos(adjsResumen));
       if (NUBE) caja2.appendChild(barraAcciones(resumen, resumen.e));
       caja.appendChild(caja2);
     }
@@ -1751,6 +1785,146 @@ _PLANTILLA = r"""<!DOCTYPE html>
   // ------------------------------------------------------------------
   var modo = null, origen = null;
 
+  // ------------------------------------------------------------------
+  // Material adjunto (PDF) de cada actividad
+  // ------------------------------------------------------------------
+  var BUCKET_ADJUNTOS = 'adjuntos';
+  var ADJUNTO_MAX = 8 * 1024 * 1024;
+  var adjuntoElegido = null;
+
+  function adjuntosDe(clave) {
+    if (!NUBE) return [];
+    var k = String(clave || '');
+    if (!k) return [];
+    var canceladas = {};
+    filasNube.forEach(function (f) { if (f.anula) canceladas[String(f.anula)] = true; });
+    return filasNube.filter(function (f) {
+      return f.tipo === 'adjunto' && String(f.clave || '') === k
+          && f.id && !canceladas[String(f.id)];
+    }).map(function (f) {
+      var c = (f.campos && typeof f.campos === 'object') ? f.campos : {};
+      return {id: f.id, archivo: String(c.archivo || ''),
+              nombre: String(c.nombre || 'material.pdf')};
+    }).filter(function (a) { return !!a.archivo; });
+  }
+
+  function urlAdjunto(archivo) {
+    return NUBE.url + '/storage/v1/object/public/' + BUCKET_ADJUNTOS + '/'
+         + String(archivo).split('/').map(encodeURIComponent).join('/');
+  }
+
+  function tamanoLegible(bytes) {
+    var n = Number(bytes) || 0;
+    return n >= 1048576 ? (n / 1048576).toFixed(1).replace('.0', '') + ' MB'
+         : Math.max(1, Math.round(n / 1024)) + ' KB';
+  }
+
+  function listaAdjuntos(adjs) {
+    var caja = document.createElement('div');
+    caja.className = 'adjuntos';
+    adjs.forEach(function (a) {
+      var enlace = document.createElement('a');
+      enlace.className = 'adjunto-link';
+      enlace.href = urlAdjunto(a.archivo);
+      enlace.target = '_blank';
+      enlace.rel = 'noopener';
+      enlace.textContent = '\u{1F4CE} ' + a.nombre;
+      caja.appendChild(enlace);
+    });
+    return caja;
+  }
+
+  function pintarAdjuntosModal() {
+    var caja = document.getElementById('m-adjunto-lista');
+    if (!caja) return;
+    caja.innerHTML = '';
+    var guardados = (origen && origen.k) ? adjuntosDe(origen.k) : [];
+
+    guardados.forEach(function (a) {
+      var fila = document.createElement('div');
+      fila.className = 'adjunto-item';
+      var enlace = document.createElement('a');
+      enlace.href = urlAdjunto(a.archivo);
+      enlace.target = '_blank';
+      enlace.rel = 'noopener';
+      enlace.className = 'nombre';
+      enlace.textContent = '\u{1F4CE} ' + a.nombre;
+      var quitar = document.createElement('button');
+      quitar.className = 'mini';
+      quitar.textContent = '✕ quitar';
+      quitar.title = 'Quita el enlace: el archivo queda en la bitácora, no se borra.';
+      quitar.addEventListener('click', function () { quitarAdjunto(a); });
+      fila.appendChild(enlace);
+      fila.appendChild(quitar);
+      caja.appendChild(fila);
+    });
+
+    if (adjuntoElegido) {
+      var elegido = document.createElement('div');
+      elegido.className = 'adjunto-item';
+      var nombre = document.createElement('span');
+      nombre.className = 'nombre';
+      nombre.textContent = '\u{1F4CE} ' + adjuntoElegido.name + ' · '
+                         + tamanoLegible(adjuntoElegido.size);
+      var sacar = document.createElement('button');
+      sacar.className = 'mini';
+      sacar.textContent = '✕';
+      sacar.title = 'No adjuntar este archivo';
+      sacar.addEventListener('click', function () {
+        adjuntoElegido = null;
+        pintarAdjuntosModal();
+      });
+      elegido.appendChild(nombre);
+      elegido.appendChild(sacar);
+      caja.appendChild(elegido);
+    }
+
+    if (!guardados.length && !adjuntoElegido) {
+      var vacio = document.createElement('div');
+      vacio.className = 'adjunto-vacio';
+      vacio.textContent = 'Sin material adjunto.';
+      caja.appendChild(vacio);
+    }
+  }
+
+  function quitarAdjunto(a) {
+    if (!NUBE || !origen) return;
+    var envio = {tipo: 'anula', clave: origen.k || '', anula: a.id,
+                 campos: {}, previo: {}, autor: nombreAutor() || 'alguien',
+                 token: token()};
+    enviar(envio).then(function (filas) {
+      filasNube = filasNube.concat(filas);
+      reconstruir();
+      repintar();
+      pintarAdjuntosModal();
+    }).catch(function (err) {
+      errorModal('No se pudo quitar: ' + String(err.message || err).slice(0, 100));
+    });
+  }
+
+  function subirAdjunto(clave, archivo) {
+    var limpio = String(archivo.name || 'material.pdf')
+                   .replace(/[^0-9A-Za-z._-]+/g, '-')
+                   .replace(/-+/g, '-').replace(/^-|-$/g, '').slice(-60) || 'material.pdf';
+    var ruta = 'a' + Date.now().toString(36) + '-' + limpio;
+    if (!/\.pdf$/i.test(ruta)) ruta += '.pdf';
+    return fetch(NUBE.url + '/storage/v1/object/' + BUCKET_ADJUNTOS + '/'
+                 + encodeURIComponent(ruta), {
+      method: 'POST',
+      headers: encabezado({'Content-Type': 'application/pdf', 'x-upsert': 'false'}),
+      body: archivo
+    }).then(function (r) {
+      return r.text().then(function (t) {
+        if (!r.ok) throw new Error(String(t).slice(0, 160) || ('HTTP ' + r.status));
+        return {tipo: 'adjunto', clave: clave, previo: {},
+                campos: {archivo: ruta,
+                         nombre: String(archivo.name || 'material.pdf').slice(0, 120),
+                         bytes: Number(archivo.size) || 0},
+                autor: nombreAutor(), token: token()};
+      });
+    });
+  }
+
   function camposUsados() {
     return modo === 'resumen'
       ? UI.filter(function (u) { return SOLO_RESUMEN.indexOf(u.c) >= 0; })
@@ -1770,6 +1944,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
     }
     modo = null;
     origen = null;
+    adjuntoElegido = null;
     errorModal('');
   }
 
@@ -1834,6 +2009,9 @@ _PLANTILLA = r"""<!DOCTYPE html>
       cont.appendChild(label);
     });
 
+    adjuntoElegido = null;
+    pintarAdjuntosModal();
+
     var modal = document.getElementById('modal');
     if (modal) {
       modal.className = (modo === 'resumen') ? 'modal-modo-resumen' : '';
@@ -1861,36 +2039,56 @@ _PLANTILLA = r"""<!DOCTYPE html>
     almacenar('edufacil-autor', autor);
 
     var valores = leerCampos();
-    var fila = null;
+    var fila = null, claveDestino = '';
     if (modo === 'nuevo') {
       var nuevo = registroNuevo(valores);
       if (!nuevo) {
         errorModal('Faltan datos: fecha, asignatura y nombre de la evaluación.');
         return;
       }
-      fila = {tipo: 'nuevo', clave: claveBase(nuevo) + '#1',
+      claveDestino = claveBase(nuevo) + '#1';
+      fila = {tipo: 'nuevo', clave: claveDestino,
               campos: validarCampos(valores), previo: {}, autor: autor,
               token: token()};
     } else {
+      claveDestino = origen ? String(origen.k || '') : '';
       var campos = {}, previo = {};
       camposUsados().forEach(function (u) {
         var valor = valores[u.c];
         var anterior = String(origen ? (origen[u.s] || '') : '');
         if (valor !== anterior) { campos[u.c] = valor; previo[u.c] = anterior; }
       });
-      if (!Object.keys(campos).length) { errorModal('No se cambió nada.'); return; }
+      if (!Object.keys(campos).length && !adjuntoElegido) {
+        errorModal('No se cambió nada ni se adjuntó material.');
+        return;
+      }
       if ('FECHA' in campos && !fechaValida(campos.FECHA)) {
         errorModal('La fecha no es válida (aaaa-mm-dd).');
         return;
       }
-      fila = {tipo: 'correccion', clave: origen.k, campos: campos, previo: previo,
-              autor: autor, token: token()};
+      if (Object.keys(campos).length) {
+        fila = {tipo: 'correccion', clave: claveDestino, campos: campos, previo: previo,
+                autor: autor, token: token()};
+      }
     }
 
     var boton = document.getElementById('m-guardar');
     if (boton) boton.disabled = true;
     errorModal('');
-    enviar(fila).then(function (filas) {
+    // Primero el archivo (si lo hay) y después las filas: si la subida falla,
+    // no se guarda nada a medias.
+    var subida = adjuntoElegido ? subirAdjunto(claveDestino, adjuntoElegido)
+                                : Promise.resolve(null);
+    subida.then(function (adjuntoFila) {
+      var envios = [];
+      if (adjuntoFila) envios.push(adjuntoFila);
+      if (fila) envios.push(fila);
+      return envios.reduce(function (p, f) {
+        return p.then(function (hechas) {
+          return enviar(f).then(function (r) { return hechas.concat(r); });
+        });
+      }, Promise.resolve([]));
+    }).then(function (filas) {
       if (boton) boton.disabled = false;
       filasNube = filasNube.concat(filas);
       reconstruir();
@@ -1916,6 +2114,27 @@ _PLANTILLA = r"""<!DOCTYPE html>
   if (botonCancelar) botonCancelar.addEventListener('click', cerrarModal);
   var botonGuardar = document.getElementById('m-guardar');
   if (botonGuardar) botonGuardar.addEventListener('click', guardarModal);
+  var entradaAdjunto = document.getElementById('m-adjunto-archivo');
+  if (entradaAdjunto) {
+    entradaAdjunto.addEventListener('change', function () {
+      var archivo = entradaAdjunto.files && entradaAdjunto.files[0];
+      var nombre = archivo ? String(archivo.name || '') : '';
+      try { entradaAdjunto.value = ''; } catch (e) {}
+      if (!archivo) return;
+      if (!/\.pdf$/i.test(nombre) || (archivo.type && archivo.type !== 'application/pdf')) {
+        errorModal('Sólo se puede adjuntar un PDF.');
+        return;
+      }
+      if (archivo.size > ADJUNTO_MAX) {
+        errorModal('El PDF pesa ' + tamanoLegible(archivo.size)
+                   + '; el máximo es 8 MB.');
+        return;
+      }
+      adjuntoElegido = archivo;
+      errorModal('');
+      pintarAdjuntosModal();
+    });
+  }
 
   // ------------------------------------------------------------------
   // PWA: instalar como app y avisos diarios (Web Push)

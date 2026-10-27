@@ -73,6 +73,7 @@ for (const id of ["datos", "ics-b64", "nube", "mes-actual", "rejilla", "detalle"
                   "leyenda", "anterior", "siguiente", "hoy", "tema", "imprimir",
                   "descargar", "nuevo", "nube-estado", "modal", "m-titulo",
                   "m-autor", "m-campos", "m-error", "m-cancelar", "m-guardar",
+                  "m-adjunto", "m-adjunto-lista", "m-adjunto-archivo",
                   "instalar", "avisos", "probar", "avisos-estado",
                   "pestanas", "tab-calendario", "tab-mensajes",
                   "cuenta-mensajes", "vista-calendario", "mensajes",
@@ -152,6 +153,8 @@ globalThis.URL = {
 // filasSim = lo que "hay en la nube"; posts = lo que la página envió.
 const filasSim = [];
 const posts = [];
+const subidas = [];
+let errorSubida = false;
 // la tabla «comunicados» (los correos de la Scuola) va aparte de las correcciones
 const comunicadosSim = [
   { id: "c1", asunto: "3ª Reunión de Apoderados", fecha: "2026-10-15T18:40:00Z",
@@ -200,6 +203,12 @@ globalThis.fetch = async (url, opts = {}) => {
   }
   // cada tabla tiene su propio simulacro
   const comu = String(url).indexOf("/comunicados") >= 0;
+  if (String(url).includes("/storage/v1/object/")) {
+    subidas.push({ url: String(url), opts });
+    if (errorSubida)
+      return { ok: false, status: 400, text: async () => '{"message":"Bucket not found"}' };
+    return { ok: true, status: 200, text: async () => '{"Key":"ok"}' };
+  }
   const lista = comu ? comunicadosSim : filasSim;
   const hechos = comu ? [] : posts;
   if (comu) {
@@ -744,6 +753,100 @@ if (barraDe(itemCorrB) &&
     barraDe(itemCorrB).children.some((c) => c.className === "corregido"))
   fallo("sigue el chip de «corregido»");
 ok("deshacer: se envía «anula» y el dato vuelve a ser el original");
+
+// 10) material en PDF: se adjunta desde la ventana y se ve en el detalle del día
+const cEvAdj = porId.rejilla.children.find((c) => c.dataset.fecha === FECHA_EV);
+cEvAdj.click();
+const itemAdj = itemDe(porId.detalle, EV.a);
+const btnEditar = barraDe(itemAdj).children.find((c) => c.textContent.includes("Editar"));
+btnEditar.click();
+if (porId.modal.hidden) fallo("no se abrió la ventana para adjuntar material");
+if (!/Sin material adjunto/.test(porId["m-adjunto-lista"].textContent))
+  fallo("la ventana debe avisar que no hay material");
+
+const entradaAdj = porId["m-adjunto-archivo"];
+const elegir = (f) => {
+  entradaAdj.files = [f];
+  (entradaAdj.listeners.change || []).forEach((fn) => fn({}));
+};
+
+elegir({ name: "foto.jpg", type: "image/jpeg", size: 900 });
+if (!/Sólo se puede adjuntar un PDF/.test(porId["m-error"].textContent))
+  fallo("no rechazó un archivo que no es PDF");
+
+elegir({ name: "enorme.pdf", type: "application/pdf", size: 9 * 1024 * 1024 });
+if (!/8 MB/.test(porId["m-error"].textContent))
+  fallo("no rechazó un PDF de más de 8 MB");
+
+elegir({ name: "material de la prueba.pdf", type: "application/pdf", size: 2048 });
+if (porId["m-error"].textContent)
+  fallo("quedó un error con un PDF válido: " + porId["m-error"].textContent);
+if (!/material de la prueba\.pdf/.test(porId["m-adjunto-lista"].textContent))
+  fallo("la ventana no muestra el archivo elegido");
+
+const antesAdj = posts.length;
+porId["m-guardar"].click();
+await tick();
+await tick();
+if (!porId.modal.hidden) fallo("la ventana no se cerró al guardar el material");
+if (!subidas.length) fallo("no se subió el PDF al almacenamiento");
+if (!/\/storage\/v1\/object\/adjuntos\//.test(subidas[0].url))
+  fallo("la subida no va al bucket adjuntos: " + subidas[0].url);
+if (!subidas[0].opts || subidas[0].opts.method !== "POST")
+  fallo("la subida del PDF debe ser un POST");
+
+const filasAdj = posts.slice(antesAdj);
+const adj = filasAdj.find((p) => p.tipo === "adjunto");
+if (!adj) fallo("no se registró la fila del adjunto: " + JSON.stringify(filasAdj));
+if (adj.clave !== EV.k) fallo("el adjunto quedó en otra clave: " + adj.clave);
+if (!/\.pdf$/.test(adj.campos.archivo))
+  fallo("el archivo guardado no es .pdf: " + adj.campos.archivo);
+if (filasAdj.some((p) => p.tipo === "correccion"))
+  fallo("adjuntar sin cambiar datos no debe inventar una corrección");
+
+const itemAdj2 = itemDe(porId.detalle, EV.a);
+const cajaAdj = itemAdj2.children.find((c) => c.className === "adjuntos");
+if (!cajaAdj || !cajaAdj.children.length)
+  fallo("el detalle del día no muestra el enlace del PDF");
+if (!/\/storage\/v1\/object\/public\/adjuntos\//.test(cajaAdj.children[0].href))
+  fallo("el enlace del PDF no apunta al bucket: " + cajaAdj.children[0].href);
+ok("material: sube el PDF, queda en la bitácora y se ve en el detalle del día");
+
+// 11) quitar el material desde la ventana (se anula, no se borra)
+const btnEditar2 = barraDe(itemAdj2).children.find((c) => c.textContent.includes("Editar"));
+btnEditar2.click();
+if (!/material de la prueba\.pdf/.test(porId["m-adjunto-lista"].textContent))
+  fallo("la ventana no muestra el material ya guardado");
+const btnQuitar = porId["m-adjunto-lista"].children[0].children.find(
+  (c) => c.textContent.includes("quitar"));
+if (!btnQuitar) fallo("falta el botón para quitar el material");
+const antesQuitar = posts.length;
+btnQuitar.click();
+await tick();
+const anulaAdj = posts.slice(antesQuitar).find((p) => p.tipo === "anula");
+if (!anulaAdj || anulaAdj.anula !== adj.id)
+  fallo("quitar el material debe enviar «anula»: " + JSON.stringify(anulaAdj));
+const itemAdj3 = itemDe(porId.detalle, EV.a);
+if (itemAdj3.children.some((c) => c.className === "adjuntos"))
+  fallo("el enlace del PDF sigue en el detalle después de quitarlo");
+ok("material: quitar anula el adjunto y desaparece del detalle");
+
+// 12) si la subida falla, no se guarda nada y la ventana sigue abierta
+const btnEditar3 = barraDe(itemAdj3).children.find((c) => c.textContent.includes("Editar"));
+btnEditar3.click();
+elegir({ name: "otro.pdf", type: "application/pdf", size: 1024 });
+errorSubida = true;
+const antesFallo = posts.length;
+porId["m-guardar"].click();
+await tick();
+await tick();
+errorSubida = false;
+if (porId.modal.hidden) fallo("la ventana se cerró aunque falló la subida");
+if (posts.length !== antesFallo) fallo("guardó filas aunque la subida falló");
+if (!/No se pudo guardar/.test(porId["m-error"].textContent))
+  fallo("no avisó del fallo de la subida");
+porId["m-cancelar"].click();
+ok("material: si la subida falla no se guarda nada y avisa");
 
 // 10) PWA: manifest, service worker, iconos y los botones de instalar/avisos
 if (!/<link rel="manifest" href="manifest\.webmanifest">/.test(html))
