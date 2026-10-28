@@ -37,8 +37,8 @@ AYUDA = """
         contadores independientes. Al entrar en una pestaña, su contenido se marca
         como leído y su contador se oculta. Si aparece otra publicación, vuelve
         a mostrarse. Cada navegador y dispositivo conserva su propio estado.</li>
-      <li><strong>Listón Al día.</strong> Alterna noticias de BioBioChile, tiempo en
-        Coronel y Ruta 160 cada 8 segundos. Usa anterior y siguiente para cambiar
+      <li><strong>Listón Al día.</strong> Muestra primero el tiempo en Coronel,
+        después Ruta 160 y luego las noticias de BioBioChile, cambiando cada 8 segundos. Usa anterior y siguiente para cambiar
         de información, y pausa para detener o reanudar el cambio automático.
         Se detiene mientras usas el teclado, pasas el mouse por encima, abres
         un detalle o dejas la pestaña oculta.</li>
@@ -72,6 +72,28 @@ AYUDA = """
   </div>
 </details>
 """
+
+BOTON_IMPRIMIR = """<button id="imprimir" type="button" title="Imprimir" aria-label="Imprimir">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+<path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+<rect x="6" y="14" width="12" height="8"/><path d="M18 12h.01"/></svg></button>"""
+
+BOTON_DESCARGAR = """<button id="descargar" class="primario" type="button"
+title="Descargar calendario (.ics)" aria-label="Descargar calendario (.ics)">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+<rect x="3" y="4" width="18" height="17" rx="2"/>
+<path d="M8 2v4M16 2v4M3 9h18M12 12v6m-3-3 3 3 3-3"/></svg></button>"""
+
+ESTILO_BOTONES = """<style id="botones-icono-locales">
+.acciones #tema, .acciones #imprimir, .acciones #descargar {
+  display: inline-flex; align-items: center; justify-content: center;
+  box-sizing: border-box; width: 44px; height: 40px; min-width: 44px; min-height: 40px;
+  flex: 0 0 44px; padding: 0;
+}
+.acciones #imprimir svg, .acciones #descargar svg { display: block; width: 20px; height: 20px; }
+</style>"""
 
 ESTILO = r"""
 #ayuda .ayuda-cuerpo > ol { margin: 0; padding-left: 24px; }
@@ -133,10 +155,10 @@ ESTILO = r"""
 """
 
 LISTON = """
-<section id="franja-local" class="liston-local" aria-label="Listón local de noticias, tiempo y Ruta 160">
+<section id="franja-local" class="liston-local" aria-label="Listón local de tiempo, Ruta 160 y noticias">
   <div class="liston-fila">
     <div class="liston-marca" title="Vista local. Consulta las fechas y fuentes al abrir el detalle.">
-      <strong>Al día</strong><span id="liston-categoria">BioBioChile</span>
+      <strong>Al día</strong><span id="liston-categoria">Tiempo en Coronel</span>
     </div>
     <a id="franja-titulo" target="_blank" rel="noopener noreferrer" role="button" tabindex="0"
        aria-controls="franja-detalle" aria-expanded="false"></a>
@@ -152,9 +174,9 @@ LISTON = """
   <div hidden>
     <span id="franja-icono"></span><p id="franja-resumen"></p>
     <a id="franja-fuente" target="_blank" rel="noopener noreferrer"></a><time id="franja-fecha"></time>
-    <button data-franja="noticias" type="button" aria-pressed="true"></button>
-    <button data-franja="clima" type="button" aria-pressed="false"></button>
+    <button data-franja="clima" type="button" aria-pressed="true"></button>
     <button data-franja="ruta" type="button" aria-pressed="false"></button>
+    <button data-franja="noticias" type="button" aria-pressed="false"></button>
   </div>
 </section>
 """
@@ -164,6 +186,8 @@ CONTROL = r"""
 (function () {
   'use strict';
   var paquete = JSON.parse(document.getElementById('franja-datos').textContent);
+  var configuracionListon = document.getElementById('liston-config');
+  var nubeListon = configuracionListon ? JSON.parse(configuracionListon.textContent) : null;
   var datos = paquete.lecturas;
   var pendiente = null, consultando = false;
   var caja = document.getElementById('franja-local');
@@ -175,7 +199,7 @@ CONTROL = r"""
   var botones = Array.from(document.querySelectorAll('[data-franja]'));
   var frames;
   function crearFrames() {
-    frames = [{tipo: 'noticias'}, {tipo: 'clima'}, {tipo: 'ruta'}];
+    frames = [{tipo: 'clima'}, {tipo: 'ruta'}, {tipo: 'noticias'}];
     var noticias = datos.filter(function (d) { return d.id === 'noticias'; })[0];
     if (noticias && noticias.estado === 'ok') {
       (noticias.enlaces || []).slice(1).forEach(function (n) { frames.push({tipo: 'noticias', noticia: n}); });
@@ -322,15 +346,19 @@ CONTROL = r"""
     });
   }
   function actualizarLectura() {
-    // Sólo lee el JSON servido por este PC. Nunca consulta Supabase ni escribe.
+    // La vista local lee su JSON; la web publicada sólo lee el snapshot público.
     if (consultando || document.visibilityState === 'hidden'
-        || location.protocol !== 'http:' || ['127.0.0.1', 'localhost', '[::1]'].indexOf(location.hostname) < 0) return;
+        || (!nubeListon && (location.protocol !== 'http:'
+          || ['127.0.0.1', 'localhost', '[::1]'].indexOf(location.hostname) < 0))) return;
     consultando = true;
     var control = new AbortController();
     var limite = window.setTimeout(function () { control.abort(); }, 10000);
-    fetch('informacion_local.json', {cache: 'no-store', signal: control.signal})
+    var urlLectura = nubeListon ? nubeListon.url + '/rest/v1/liston_publico?select=datos&id=eq.true' : 'informacion_local.json';
+    fetch(urlLectura, {cache: 'no-store', signal: control.signal,
+      headers: nubeListon ? {apikey: nubeListon.key} : {}})
       .then(function (r) { if (!r.ok) throw new Error('Lectura no disponible'); return r.json(); })
       .then(function (p) {
+        if (nubeListon) p = Array.isArray(p) && p[0] ? p[0].datos : null;
         if (paqueteValido(p) && Date.parse(p.consultado) > Date.parse((pendiente || paquete).consultado)) pendiente = p;
       })
       .catch(function () { /* Conservar la lectura anterior y su fecha; su vigencia no se renueva. */ })
@@ -352,10 +380,14 @@ CONTROL = r"""
 
 def crear_liston(html: str, datos: dict, mensajes: list[dict] | None = None,
                  noticias: dict | None = None) -> str:
+    html = html.replace(ESTILO, '')
+    html = re.sub(r'<style id="botones-icono-locales">.*?</style>', '', html, flags=re.S)
     vista = crear_vista_previa(html, datos, mensajes)
+    vista = re.sub(r'<button\b[^>]*\bid="imprimir"[^>]*>.*?</button>', BOTON_IMPRIMIR, vista, count=1, flags=re.S)
+    vista = re.sub(r'<button\b[^>]*\bid="descargar"[^>]*>.*?</button>', BOTON_DESCARGAR, vista, count=1, flags=re.S)
     vista = re.sub(r'<details id="ayuda">.*?</details>', AYUDA, vista, count=1, flags=re.S)
     vista = vista.replace(BANDA, LISTON, 1)
-    vista = vista.replace('</style>', ESTILO + '\n</style>', 1)
+    vista = vista.replace('</style>', ESTILO + '\n</style>\n' + ESTILO_BOTONES, 1)
     vista = vista.replace('</body>', CONTROL + '\n</body>', 1)
     return integrar_noticias(vista, noticias) if noticias is not None else vista
 

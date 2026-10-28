@@ -1,6 +1,8 @@
 -- Sólo infraestructura de traducción. Desactivada hasta configurar Google.
 -- No modifica las traducciones existentes ni las tablas de avisos.
 begin;
+alter table public.noticias_scuola add column if not exists titulo_es_proveedor text not null default 'manual'
+  check(titulo_es_proveedor in ('manual','google'));
 create table if not exists public.noticias_traduccion_config (
   id boolean primary key default true check(id),
   activo boolean not null default false,
@@ -80,4 +82,15 @@ revoke all on function public.noticias_traduccion_reservar(text,text),
   public.noticias_traduccion_guardar(text,uuid,text) from public, anon, authenticated;
 grant execute on function public.noticias_traduccion_reservar(text,text),
   public.noticias_traduccion_guardar(text,uuid,text) to service_role;
+create or replace function public.noticias_scuola_cambiar_revision()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if tg_op <> 'UPDATE' or
+    row(new.url,new.fecha,new.titulo,new.titulo_es,new.detalle,new.miniatura,new.titulo_es_proveedor) is distinct from
+    row(old.url,old.fecha,old.titulo,old.titulo_es,old.detalle,old.miniatura,old.titulo_es_proveedor) then
+    update public.noticias_scuola_revision set version=version+1 where id;
+  end if;
+  return null;
+end;
+$$;
 commit;

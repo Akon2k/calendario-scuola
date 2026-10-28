@@ -247,9 +247,9 @@ globalThis.fetch = async (url, opts = {}) => {
 };
 
 // ---------- ejecutar el script de la página ----------
-const i = html.lastIndexOf("<script>");
-const j = html.indexOf("</script>", i);
-const js = html.slice(i + "<script>".length, j);
+const js = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
+  .map(m => m[1]).find(s => s.includes("var D = JSON.parse(document.getElementById('datos').textContent)"));
+if (!js) throw new Error('No se encontró el motor del calendario');
 eval(js);
 await new Promise((r) => setTimeout(r, 30));   // la carga de la nube es async
 

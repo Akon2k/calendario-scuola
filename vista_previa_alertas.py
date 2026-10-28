@@ -239,10 +239,30 @@ def consultar_mensajes(html: str) -> list[dict]:
     raise ValueError('Demasiados comunicados para la copia local')
 
 
+def retirar_franja(html: str) -> str:
+    """Retira sólo los bloques generados del listón, sin tocar la página base."""
+    html = re.sub(r'<section id="franja-local"[^>]*>.*?</section>', '', html, flags=re.S)
+    def conservar_script(m):
+        bloque = m[0]
+        if re.search(r'\bid="(?:franja-datos|liston-config)"', bloque.split('>', 1)[0]):
+            return ''
+        if re.match(r"<script>\s*\(function \(\) \{\s*'use strict';\s*"
+                    r"var paquete = JSON.parse\(document.getElementById\('franja-datos'\)", bloque):
+            return ''
+        return bloque
+    return re.sub(r'<script\b[^>]*>.*?</script>', conservar_script, html, flags=re.S)
+
+
 def crear_vista_previa(html: str, datos: dict, mensajes: list[dict] | None = None) -> str:
     for marca in ("</style>", "</header>", "</body>"):
         if marca not in html:
             raise ValueError("La página base no contiene " + marca)
+    # Aceptar también una copia local anterior sin acumular timers ni snapshots.
+    html = retirar_franja(html)
+    html = re.sub(r'<script\b[^>]*\bid="(?:vista-local-sin-cache|mensajes-locales)"[^>]*>.*?</script>', '', html, flags=re.S)
+    html = re.sub(r'<script>window\.__calendario\.mensajes\(JSON\.parse\(document\.getElementById\("mensajes-locales"\).*?</script>', '', html, flags=re.S)
+    html = html.replace(CSS, '')
+    html = html.replace('<p class="sub">Copia local de los comunicados al generar esta vista; no se actualiza en vivo.</p>', '')
     # Desconectar Supabase sólo en la copia, sin modificar config ni la página real.
     html, cambios = re.subn(r'(<script type="application/json" id="nube">).*?(</script>)',
                             r'\g<1>null\g<2>', html, count=1, flags=re.S)
@@ -259,7 +279,7 @@ def crear_vista_previa(html: str, datos: dict, mensajes: list[dict] | None = Non
     # la ubicación guardada del calendario normal ni pedir permiso de ubicación.
     html = html.replace("var lugarClimaDefecto = { latitud: -36.83, longitud: -73.05, nombre: 'Concepción' };",
                         "var lugarClimaDefecto = { latitud: -37.03386, longitud: -73.14019, nombre: 'Coronel' };")
-    html = html.replace('edufacil-clima-lugar', 'edufacil-clima-lugar-vista-coronel')
+    html = re.sub(r'edufacil-clima-lugar(?!-vista-coronel)', 'edufacil-clima-lugar-vista-coronel', html)
     html = html.replace("lugar.propia ? lugar.nombre : 'Mi ubicación'", "lugar.propia ? lugar.nombre : 'Coronel'")
     if mensajes is not None:
         # Reutilizar el renderizador y las pestañas originales, sin reactivar

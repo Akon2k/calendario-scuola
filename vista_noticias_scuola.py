@@ -45,7 +45,7 @@ def recopilar_noticias_nube() -> dict | None:
                 if isinstance(revisiones, list) and revisiones:
                     revision = revisiones[0].get('version')
         with requests.get(config['url'].rstrip('/') + '/rest/v1/noticias_scuola',
-                params={'select': 'id,url,fecha,titulo,titulo_es,detalle,miniatura', 'order': 'fecha.desc,url.asc',
+                params={'select': 'id,url,fecha,titulo,titulo_es,titulo_es_proveedor,detalle,miniatura', 'order': 'fecha.desc,url.asc',
                         'fecha': 'lte.' + datetime.now(CHILE).date().isoformat(), 'limit': 1000},
                 headers={'apikey': key}, timeout=(5, 20)) as respuesta:
             respuesta.raise_for_status()
@@ -192,6 +192,9 @@ ESTILO = r"""
 .noticia-scuola h3 { font-size: 14px; line-height: 1.45; margin: 0; }
 .noticia-scuola .scuola-extracto { font-size: 12.5px; line-height: 1.5; margin: 6px 0 0; color: var(--texto-secundario); }
 .scuola-traduccion { margin: 5px 0 0; font-size: 13px; line-height: 1.5; color: var(--texto-secundario); }
+.scuola-google[hidden], #scuola-google-legal[hidden] { display: none; }
+.scuola-google img { display: block; width: 160px; max-width: 100%; height: auto; border-radius: 0; }
+#scuola-google-legal { margin-top: 14px; font-size: 11px; color: var(--suave); }
 #scuola-lector { width: min(740px, calc(100% - 28px)); max-height: 85vh; overflow: auto;
   box-sizing: border-box; border: 1px solid var(--borde); border-radius: 12px; padding: 18px;
   color: var(--texto); background: var(--tarjeta); }
@@ -226,6 +229,8 @@ LECTOR = """<dialog id="scuola-lector" aria-labelledby="scuola-lector-titulo">
 <div class="scuola-lector-barra"><button id="scuola-volver" type="button">← Volver</button>
 <a id="scuola-original" target="_blank" rel="noopener noreferrer">Ver publicación original ↗</a></div>
 <h2 id="scuola-lector-titulo"></h2><p id="scuola-lector-traduccion" class="scuola-traduccion"></p>
+<a id="scuola-google-lector" class="scuola-google" href="https://translate.google.com/" target="_blank" rel="noopener noreferrer" hidden>
+<img data-google-badge width="640" height="91" alt="Powered by Google Translate" referrerpolicy="no-referrer"></a>
 <time id="scuola-lector-fecha"></time><p id="scuola-lector-estado" role="status" aria-live="polite"></p>
 <div id="scuola-lector-texto"></div></dialog>"""
 
@@ -249,6 +254,28 @@ CONTROL = r"""
   var volverA = null, peticion = null, consultando = false;
   var cacheTextos = new Map();
   var revision = nube && nube.revision;
+  function google(n) { return n && n.titulo_es && n.titulo_es_proveedor === 'google'; }
+  function insignia(elemento, visible) {
+    elemento.hidden = !visible;
+    var img = elemento.querySelector('img');
+    if (visible && img && !img.getAttribute('src')) img.src = 'https://docs.cloud.google.com/static/translate/images/text-attribution.png';
+  }
+  function atribucion() {
+    var usaGoogle = datos.some(google);
+    insignia(document.getElementById('scuola-google-lista'), usaGoogle);
+    document.getElementById('scuola-google-legal').hidden = !usaGoogle;
+    var nota = document.getElementById('scuola-google-ayuda');
+    if (usaGoogle && !nota) {
+      var li = document.querySelector('#ayuda ol > li:nth-child(3)');
+      if (li) {
+        nota = document.createElement('p'); nota.id = 'scuola-google-ayuda';
+        nota.appendChild(document.createTextNode('Algunos títulos usan traducciones automáticas de Google Translate. '));
+        var enlace = document.createElement('a'); enlace.href = 'https://cloud.google.com/translate';
+        enlace.target = '_blank'; enlace.rel = 'noopener noreferrer'; enlace.textContent = 'Información del servicio de traducción.';
+        nota.appendChild(enlace); li.appendChild(nota);
+      }
+    } else if (!usaGoogle && nota) nota.remove();
+  }
   function permitida(url) {
     try { var u = new URL(url); return u.protocol === 'https:' && u.hostname === 'scuola.scuolaitalianadiconcepcion.cl'
       && !u.port && !u.username && !u.password && !u.search && !u.hash && /^\/2026\/\d{2}\/\d{2}\/[a-z0-9-]+\/$/.test(u.pathname); }
@@ -307,13 +334,15 @@ CONTROL = r"""
       }
       var caja = document.createElement('div'); caja.className = 'scuola-texto';
       var h = document.createElement('h3'); h.textContent = n.titulo; caja.appendChild(h);
-      if (n.titulo_es) { var es = document.createElement('p'); es.className = 'scuola-traduccion'; es.textContent = '(' + n.titulo_es + ')'; caja.appendChild(es); }
+      if (n.titulo_es) { var es = document.createElement('p'); es.className = 'scuola-traduccion'; es.lang = google(n) ? 'es-x-mtfrom-it' : 'es';
+        if (google(n)) es.title = 'Traducción automática de Google Translate';
+        es.textContent = '(' + n.titulo_es + ')'; caja.appendChild(es); }
       if (n.detalle) { var p = document.createElement('p'); p.className = 'scuola-extracto'; p.textContent = n.detalle; caja.appendChild(p); }
       var time = document.createElement('time'); time.dateTime = n.fecha; time.textContent = fecha(n.fecha); caja.appendChild(time);
       a.appendChild(caja); articulo.appendChild(a); fragmento.appendChild(articulo);
     });
     lista.replaceChildren(fragmento); datos = nuevos; mas.hidden = nuevos.length <= visibles;
-    panel.scrollTop = scroll; observar(); if (!panel.hidden) cargarVisibles(); contador();
+    panel.scrollTop = scroll; observar(); if (!panel.hidden) cargarVisibles(); contador(); atribucion();
   }
   async function revisar() {
     if (consultando || document.visibilityState === 'hidden' || !configurada()) return;
@@ -326,7 +355,7 @@ CONTROL = r"""
       if (!Array.isArray(revisiones) || !revisiones[0] || !Number.isSafeInteger(revisiones[0].version)) return;
       var nuevaRevision = revisiones[0].version;
       if (nuevaRevision === revision) { contador(); return; }
-      var u = nube.url + '/rest/v1/noticias_scuola?select=id,url,fecha,titulo,titulo_es,detalle,miniatura&order=fecha.desc,url.asc&limit=1000';
+      var u = nube.url + '/rest/v1/noticias_scuola?select=id,url,fecha,titulo,titulo_es,titulo_es_proveedor,detalle,miniatura&order=fecha.desc,url.asc&limit=1000';
       var r = await fetch(u, {headers: {apikey: nube.key}, cache: 'no-store', signal: AbortSignal.timeout(15000)});
       if (!r.ok) return;
       var filas = await r.json();
@@ -391,6 +420,8 @@ CONTROL = r"""
     var esta = peticion;
     document.getElementById('scuola-lector-titulo').textContent = n.titulo;
     document.getElementById('scuola-lector-traduccion').textContent = n.titulo_es ? '(' + n.titulo_es + ')' : '';
+    document.getElementById('scuola-lector-traduccion').lang = google(n) ? 'es-x-mtfrom-it' : 'es';
+    insignia(document.getElementById('scuola-google-lector'), google(n));
     document.getElementById('scuola-lector-fecha').textContent = fecha(n.fecha);
     document.getElementById('scuola-original').href = n.url;
     textoLector.replaceChildren(); estadoLector.textContent = 'Cargando noticia…';
@@ -419,7 +450,7 @@ CONTROL = r"""
   window.addEventListener('storage', function (e) { if (e.key === claveLeidas) { leidasSesion = leidas(); contador(); } });
   document.addEventListener('visibilitychange', function () { if (document.visibilityState !== 'hidden') revisar(); });
   window.setInterval(revisar, 60000);
-  observar(); contador();
+  observar(); contador(); atribucion();
   if (location.hash === '#noticias') noticias.click();
   else estado(mensajes.classList.contains('activa') ? mensajes : cal);
   revisar();
@@ -429,6 +460,15 @@ CONTROL = r"""
 
 
 def integrar_noticias(html: str, paquete: dict) -> str:
+    # La página de entrada puede ser una copia local ya integrada. Reemplazar
+    # sólo nuestros bloques, sin volver a serializar ni tocar el calendario.
+    for etiqueta, ident in (('button', 'tab-noticias-scuola'), ('section', 'noticias-scuola'),
+                            ('dialog', 'scuola-lector'), ('script', 'scuola-config'),
+                            ('script', 'scuola-datos'), ('script', 'control-noticias-scuola')):
+        html = re.sub(r'<' + etiqueta + r'\b[^>]*\bid="' + ident + r'"[^>]*>.*?</' + etiqueta + r'>',
+                      '', html, flags=re.S)
+    html = re.sub(r'\n#noticias-scuola \{.*?@media print \{ #noticias-scuola \{ display: none !important; \} \}\n',
+                  '', html, flags=re.S)
     for marca in ('<nav id="pestanas">', '<section id="mensajes" hidden>', '</style>', '</body>'):
         if marca not in html:
             raise ValueError('No se pudo agregar Noticias Scuola: falta ' + marca)
@@ -447,21 +487,28 @@ def integrar_noticias(html: str, paquete: dict) -> str:
         imagen = n.get('miniatura', '')
         img = ('<img data-src="' + escape(imagen, quote=True) + '" width="88" height="72" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">'
                if enlace_valido(imagen, DOMINIO) and urlparse(imagen).path.startswith('/wp-content/uploads/') else '')
-        validas.append({k: n.get(k) for k in ('id', 'url', 'fecha', 'titulo', 'titulo_es', 'detalle', 'miniatura')})
+        validas.append({k: n.get(k) for k in ('id', 'url', 'fecha', 'titulo', 'titulo_es', 'titulo_es_proveedor', 'detalle', 'miniatura')})
         tarjetas.append('<article class="noticia-scuola"' + (' hidden' if len(tarjetas) >= 12 else '') + '><a href="'
             + escape(n['url'], quote=True) + '" data-noticia-url="' + escape(n['url'], quote=True) + '" target="_blank" rel="noopener noreferrer">' + img
             + '<div class="scuola-texto"><h3>' + escape(str(n.get('titulo', 'Noticia'))) + '</h3>'
-            + ('<p class="scuola-traduccion">(' + escape(str(n['titulo_es'])) + ')</p>' if n.get('titulo_es') else '')
+            + ('<p class="scuola-traduccion" lang="' + ('es-x-mtfrom-it' if n.get('titulo_es_proveedor') == 'google' else 'es') + '">('
+               + escape(str(n['titulo_es'])) + ')</p>' if n.get('titulo_es') else '')
             + ('<p class="scuola-extracto">' + escape(str(n['detalle'])) + '</p>' if n.get('detalle') else '')
             + '<time datetime="' + fecha.strftime('%Y-%m-%d') + '">'
             + fecha.strftime('%d/%m/%Y') + '</time></div></a></article>')
     vacio = '<p>No se pudieron cargar las noticias de 2026. Puedes revisarlas en el sitio de la Scuola.</p>' if not tarjetas else ''
     panel = ('<section id="noticias-scuola" aria-label="Noticias Scuola 2026" hidden>'
              '<div class="scuola-cabecera"><h2>Noticias Scuola · 2026</h2>'
-             '<a href="' + FUENTE + '" target="_blank" rel="noopener noreferrer">Sitio de la Scuola ↗</a></div>'
+             '<a href="' + FUENTE + '" target="_blank" rel="noopener noreferrer">Sitio de la Scuola ↗</a>'
+             '<a id="scuola-google-lista" class="scuola-google" href="https://translate.google.com/" target="_blank" rel="noopener noreferrer" hidden>'
+             '<img data-google-badge width="640" height="91" alt="Powered by Google Translate" referrerpolicy="no-referrer"></a></div>'
              + vacio + '<div class="scuola-noticias-rejilla">' + ''.join(tarjetas) + '</div>'
              '<div class="scuola-pie"><button id="scuola-mas" type="button"'
-             + (' hidden' if len(tarjetas) <= 12 else '') + '>Ver más noticias</button></div></section>\n')
+             + (' hidden' if len(tarjetas) <= 12 else '') + '>Ver más noticias</button></div>'
+             '<details id="scuola-google-legal" hidden><summary>Sobre las traducciones automáticas</summary><p>'
+             'THIS SERVICE MAY CONTAIN TRANSLATIONS POWERED BY GOOGLE. GOOGLE DISCLAIMS ALL WARRANTIES RELATED TO THE TRANSLATIONS, '
+             'EXPRESS OR IMPLIED, INCLUDING ANY WARRANTIES OF ACCURACY, RELIABILITY, AND ANY IMPLIED WARRANTIES OF MERCHANTABILITY, '
+             'FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.</p></details></section>\n')
     html = re.sub(r'(<nav id="pestanas">.*?)(</nav>)', lambda m: m[1] + PESTANA + '\n' + m[2], html, count=1, flags=re.S)
     html = html.replace('<section id="mensajes" hidden>', panel + '<section id="mensajes" hidden>', 1)
     html = html.replace('</style>', ESTILO + '\n</style>', 1)

@@ -1,44 +1,56 @@
 # -*- coding: utf-8 -*-
-"""Integración de Noticias Scuola y listón informativo en la página publicada."""
+"""Integra el diseño aprobado sin aplicar las restricciones de la copia local."""
 from __future__ import annotations
 
 import json
 import re
-from pathlib import Path
+from urllib.parse import urlparse
 
 from edufacil.informacion_local import recopilar
 from vista_noticias_scuola import integrar_noticias, recopilar_noticias, recopilar_noticias_nube
-from vista_previa_alertas import CSS as CSS_ALERTA, SCRIPT as SCRIPT_ALERTA
-from vista_previa_liston import AYUDA, CONTROL as CONTROL_LISTON, ESTILO as ESTILO_LISTON, LISTON
+from vista_previa_alertas import CSS as CSS_ALERTA, SCRIPT as SCRIPT_ALERTA, retirar_franja
+from vista_previa_liston import (
+    AYUDA, BOTON_DESCARGAR, BOTON_IMPRIMIR, CONTROL, ESTILO, ESTILO_BOTONES, LISTON,
+)
 
-# Limpiar las reglas exclusivas de la prueba local (no ocultar botones de PWA/Avisos en producción)
-CSS_LIMPIO = re.sub(r'/\* Exclusivo de la copia local.*?\*/\s*#instalar.*?\n(\.acciones.*?\n)?', '', CSS_ALERTA, flags=re.S)
+# Compatibilidad con la integración anterior; nunca ocultar edición/PWA/avisos.
+CSS_ANTERIOR = re.sub(r'/\* Exclusivo de la copia local.*?\*/\s*#instalar.*?\n(\.acciones.*?\n)?', '', CSS_ALERTA, flags=re.S)
+CSS_PUBLICO = CSS_ALERTA.replace(
+    '#instalar, #avisos, #avisos-estado, #avisos-ayuda, #nube-estado { display: none !important; }', ''
+).replace('.acciones #descargar { flex: 0 1 auto; }', '')
 
 
-def aplicar_noticias_y_liston(html: str) -> str:
-    """Integra la pestaña Noticias Scuola, el listón y las instrucciones actualizadas."""
-    # 1. Instrucciones de uso ordenadas y limpias (10 puntos)
-    if '<details id="ayuda">' in html:
-        html = re.sub(r'<details id="ayuda">.*?</details>', AYUDA, html, count=1, flags=re.S)
-
-    # 2. Listón Al día (BioBioChile, tiempo Coronel, Ruta 160)
-    if 'id="franja-local"' not in html:
-        datos = recopilar()
-        datos_json = json.dumps(datos, ensure_ascii=False).replace("</", "<\\/")
-        liston_html = LISTON.replace('title="Vista local. Consulta las fechas y fuentes al abrir el detalle."',
-                                     'title="Titulares y datos al día. Consulta las fechas y fuentes al abrir el detalle."')
-        liston_html = liston_html.replace('aria-label="Listón local de noticias, tiempo y Ruta 160"',
-                                          'aria-label="Listón de noticias, tiempo y Ruta 160"')
-        html = html.replace("</header>", "</header>\n" + liston_html, 1)
-        # Inyectar tanto la base de la franja (estilos de caja, detalle, etc.) como los estilos del listón
-        html = html.replace("</style>", CSS_LIMPIO + "\n" + ESTILO_LISTON + "\n</style>", 1)
-        # Inyectar el motor base (SCRIPT_ALERTA) y el carrusel del listón (CONTROL_LISTON)
-        html = html.replace("</body>", '<script type="application/json" id="franja-datos">'
-                            + datos_json + "</script>\n" + SCRIPT_ALERTA + "\n" + CONTROL_LISTON + "\n</body>", 1)
-
-    # 3. Pestaña Noticias Scuola (2026, traducciones, lector y Supabase)
-    if 'id="noticias-scuola"' not in html:
-        noticias = recopilar_noticias_nube() or recopilar_noticias()
-        html = integrar_noticias(html, noticias)
-
-    return html
+def aplicar_noticias_y_liston(html: str, datos: dict | None = None, noticias: dict | None = None) -> str:
+    """Reemplaza la integración conservando nube, datos, PDF y service worker."""
+    if 'id="vista-local-sin-cache"' in html or 'id="mensajes-locales"' in html:
+        raise ValueError('No se puede publicar una vista previa de sólo lectura')
+    marca = re.search(r'<script type="application/json" id="nube">(.*?)</script>', html, re.S)
+    nube = json.loads(marca[1]) if marca else None
+    u = urlparse((nube or {}).get('url', ''))
+    if (not nube or u.scheme != 'https' or not (u.hostname or '').endswith('.supabase.co')
+            or u.username or u.password or u.port or not str(nube.get('key', '')).startswith('sb_publishable_')):
+        raise ValueError('La publicación necesita su configuración pública de producción')
+    datos = recopilar() if datos is None else datos
+    noticias = (recopilar_noticias_nube() or recopilar_noticias()) if noticias is None else noticias
+    if not noticias:
+        raise ValueError('No se pudieron preparar las noticias')
+    html = retirar_franja(html)
+    for css in (CSS_ALERTA, CSS_ANTERIOR, CSS_PUBLICO, ESTILO):
+        html = html.replace(css, '')
+    html = re.sub(r'<style id="botones-icono-locales">.*?</style>', '', html, flags=re.S)
+    html = re.sub(r'<details id="ayuda">.*?</details>', AYUDA, html, count=1, flags=re.S)
+    for ident, boton in (('imprimir', BOTON_IMPRIMIR), ('descargar', BOTON_DESCARGAR)):
+        html = re.sub(r'<button\b[^>]*\bid="' + ident + r'"[^>]*>.*?</button>', boton, html, count=1, flags=re.S)
+    liston = LISTON.replace('title="Vista local. Consulta las fechas y fuentes al abrir el detalle."',
+                            'title="Consulta las fechas y fuentes al abrir el detalle."')
+    liston = liston.replace('aria-label="Listón local de tiempo, Ruta 160 y noticias"',
+                            'aria-label="Listón de tiempo, Ruta 160 y noticias"')
+    html = html.replace('</header>', '</header>\n' + liston, 1)
+    html = html.replace('</style>', CSS_PUBLICO + '\n' + ESTILO + '\n</style>\n' + ESTILO_BOTONES, 1)
+    def serializar(valor):
+        return json.dumps(valor, ensure_ascii=False, allow_nan=False).replace('</', '<\\/')
+    config = {'url': nube['url'].rstrip('/'), 'key': nube['key']}
+    scripts = '<script type="application/json" id="franja-datos">' + serializar(datos) + '</script>\n'
+    scripts += '<script type="application/json" id="liston-config">' + serializar(config) + '</script>\n'
+    html = html.replace('</body>', scripts + SCRIPT_ALERTA + '\n' + CONTROL + '\n</body>', 1)
+    return integrar_noticias(html, noticias)

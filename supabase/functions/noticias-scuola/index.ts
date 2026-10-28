@@ -31,7 +31,7 @@ async function traducir(titulo: string): Promise<string | null> {
 }
 
 async function sincronizar() {
-  const {data: guardadas, error: fallo} = await sb.from('noticias_scuola').select('url,titulo,titulo_es,fecha,detalle,miniatura,fuente_modificada');
+  const {data: guardadas, error: fallo} = await sb.from('noticias_scuola').select('url,titulo,titulo_es,titulo_es_proveedor,fecha,detalle,miniatura,fuente_modificada');
   if (fallo) throw new Error('Caché no disponible');
   const anteriores = new Map((guardadas || []).map(n => [n.url, n]));
   const hoy = new Intl.DateTimeFormat('en-CA', {timeZone: 'America/Santiago', year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date());
@@ -51,9 +51,11 @@ async function sincronizar() {
       if (!titulo || titulo.length > 1000) continue;
       const anterior = anteriores.get(e.link);
       let titulo_es = anterior?.titulo === titulo ? anterior.titulo_es : null;
-      if (!titulo_es && mapa[titulo]) titulo_es = mapa[titulo];
+      let titulo_es_proveedor = titulo_es ? anterior?.titulo_es_proveedor || 'manual' : 'manual';
+      if (!titulo_es && mapa[titulo]) { titulo_es = mapa[titulo]; titulo_es_proveedor = 'manual'; }
       if (!titulo_es && intentosTraduccion < 5 && Deno.env.get('GOOGLE_TRANSLATE_API_KEY')) {
         intentosTraduccion++; titulo_es = await traducir(titulo);
+        if (titulo_es) titulo_es_proveedor = 'google';
       }
       const candidatas: {puntaje: number; url: string}[] = [];
       for (const m of e._embedded?.['wp:featuredmedia'] || []) {
@@ -68,10 +70,10 @@ async function sincronizar() {
         }
       }
       candidatas.sort((a, b) => a.puntaje - b.puntaje);
-      const fila = {url: e.link, titulo, titulo_es, fecha, detalle: plano(e.excerpt?.rendered || '').slice(0, 10000),
+      const fila = {url: e.link, titulo, titulo_es, titulo_es_proveedor, fecha, detalle: plano(e.excerpt?.rendered || '').slice(0, 10000),
         miniatura: candidatas[0]?.url || '', fuente_modificada: e.modified || null, consultado: new Date().toISOString()};
       total++;
-      if (!anterior || ['titulo','titulo_es','fecha','detalle','miniatura','fuente_modificada'].some(k =>
+      if (!anterior || ['titulo','titulo_es','titulo_es_proveedor','fecha','detalle','miniatura','fuente_modificada'].some(k =>
         (fila as any)[k] !== (anterior as any)[k])) filas.push(fila);
       if (!anterior) nuevas++;
     }

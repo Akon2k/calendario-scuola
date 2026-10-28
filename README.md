@@ -165,6 +165,25 @@ Un detalle práctico: si usás Brave en la computadora, los avisos no llegan
 —es un bug conocido de Brave—, usá Chrome o Edge. En el celular con Chrome
 funcionan sin problemas.
 
+## Listón y noticias publicados
+
+La web incorpora Noticias Scuola de 2026 y el listón **Tiempo → Ruta 160 →
+Noticias**, con cambio cada 8 segundos. Impresión y descarga ICS se muestran
+como iconos con leyenda al pasar el mouse. Se conservan edición, documentos,
+Mensajes, instalación y avisos. Las vistas previas no se publican.
+
+El cron de Noticias Scuola revisa la fuente cada 15 minutos en el servidor.
+Para refrescar también las fuentes del listón público, mantener en este PC:
+
+```powershell
+python actualizar_liston_local.py --publicar
+```
+
+Replica un snapshot público de sólo lectura cada 15 minutos; requiere aplicar
+`sql/liston_publico.sql` y la CLI autenticada. No guarda claves en HTML ni manda
+avisos. Si el PC se apaga, se conserva la última consulta y su caducidad.
+Google está preparado pero **desactivado**, sin credencial configurada.
+
 ## El resumen de los sábados y los avisos
 
 Vista **sólo local** de una franja de Ruta 160, meteorología y

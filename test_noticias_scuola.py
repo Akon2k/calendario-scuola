@@ -74,6 +74,13 @@ def main():
     assert 'noticias_scuola_revision?select=version' in vista
     assert 'edufacil-noticias-scuola-leidas' in vista
     assert 'p.textContent = t;' in vista, 'el lector nunca inserta HTML de las noticias'
+    renovada = integrar_noticias(vista, {'noticias': [dict(noticias[0], titulo='Título actualizado')]})
+    for ident in ('tab-noticias-scuola', 'noticias-scuola', 'cuenta-noticias-scuola', 'scuola-lector',
+                  'scuola-config', 'scuola-datos', 'control-noticias-scuola'):
+        assert renovada.count('id="' + ident + '"') == 1, 'no duplicar ' + ident
+    assert renovada.count('#noticias-scuola { position:') == 1
+    assert renovada.count('class="noticia-scuola"') == 1 and 'Título actualizado' in renovada
+    assert 'Calendario intacto' in renovada and 'Mensajes intactos' in renovada
     try:
         integrar_noticias(base_html, {'noticias': [], 'nube': {'key': 'privada-no-usar'}})
     except ValueError:
