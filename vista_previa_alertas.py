@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Diseño LOCAL de una franja informativa. No publica ni consulta noticias.
+"""Franja LOCAL con lecturas reales y fecha de consulta. Nunca publica.
 
     python vista_previa_alertas.py
 
 Genera salida/vista_previa_alertas.html, fuera de la lista de publicar.py.
-Usa ejemplos explícitos y desactiva Supabase sólo en esta copia de lectura.
+Consulta fuentes públicas y desactiva Supabase sólo en esta copia de lectura.
 """
 from __future__ import annotations
 
@@ -12,106 +12,95 @@ import json
 import re
 from pathlib import Path
 
-RAIZ = Path(__file__).resolve().parent
+from edufacil.informacion_local import recopilar
 
-EJEMPLOS = [
-    {
-        "id": "ruta", "icono": "160", "categoria": "Ruta 160",
-        "titulo": "Ejemplo de informe vial de Ruta 160",
-        "resumen": "Aquí aparecerían congestión, obras o desvíos, con el tramo y la hora del reporte.",
-        "detalle": "PROPUESTA DE DISEÑO, NO ES UN REPORTE REAL.\n\n"
-                   "Zona de referencia: San Pedro de la Paz, Coronel y accesos a la Ruta 160.\n"
-                   "Cada informe tendría tramo, sentido del tránsito, hora y enlace a la fuente.\n"
-                   "Fuente por conectar: información vial oficial o del operador de la ruta.",
-    },
-    {
-        "id": "clima", "icono": "☁", "categoria": "Meteorología",
-        "titulo": "Ejemplo de aviso meteorológico para Biobío",
-        "resumen": "Un aviso oficial de lluvia o viento mostraría su zona y vigencia. No es una alerta real.",
-        "detalle": "PROPUESTA DE DISEÑO, NO HAY UNA ALERTA OFICIAL CONECTADA.\n\n"
-                   "Se mostrarían el organismo emisor, zona afectada y periodo de vigencia.\n"
-                   "Posibles fuentes a integrar: Dirección Meteorológica de Chile y SENAPRED.\n"
-                   "El pronóstico habitual del clima no se presentaría como una alerta oficial.",
-    },
-    {
-        "id": "noticias", "icono": "i", "categoria": "Noticias locales",
-        "titulo": "Ejemplo de noticia de interés para las familias",
-        "resumen": "Un titular breve sobre Concepción y San Pedro de la Paz, con fecha y enlace a la publicación.",
-        "detalle": "PROPUESTA DE DISEÑO, NO ES UNA NOTICIA PUBLICADA.\n\n"
-                   "Cada noticia llevaría titular, resumen, fecha y medio o institución de origen.\n"
-                   "El enlace permitiría leer la publicación original.\n"
-                   "Todavía no se ha elegido ni conectado una fuente de noticias.",
-    },
-]
+RAIZ = Path(__file__).resolve().parent
 
 CSS = r"""
 /* Exclusivo de la copia local: no se integra en la plantilla publicada. */
 #instalar, #avisos, #avisos-estado, #avisos-ayuda, #nube-estado { display: none !important; }
 .acciones #descargar { flex: 0 1 auto; }
 #franja-local {
+  width: 100%; max-width: 1180px; min-width: 0; box-sizing: border-box;
   border: 1px solid var(--borde); border-left: 4px solid var(--verde);
-  background: var(--tarjeta); border-radius: 12px; margin: 0 0 16px;
+  background: var(--tarjeta); border-radius: 12px; margin: 0 auto 16px;
   padding: 12px 14px; color: var(--texto);
 }
-.franja-cabecera { display: flex; align-items: center; justify-content: space-between;
+.franja-cabecera { display: flex; align-items: center; justify-content: space-between; min-width: 0;
   flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
 .franja-marca { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .franja-marca strong { font-size: 13px; color: var(--verde-texto); }
 .franja-demo { border: 1px dashed var(--borde); padding: 2px 7px; border-radius: 6px;
   font-size: 10px; letter-spacing: .04em; color: var(--suave); }
 .franja-filtros { display: flex; flex-wrap: wrap; gap: 5px; }
-.franja-filtros button { font-size: 11.5px; padding: 4px 10px; border-radius: 999px;
+.franja-filtros button { font-size: 11.5px; padding: 4px 10px; border-radius: 999px; min-width: 0;
   background: var(--tarjeta); color: var(--suave); }
 .franja-filtros button[aria-pressed="true"] { color: var(--verde-texto);
   border-color: var(--verde); background: var(--tarjeta-secundaria); font-weight: 600; }
-.franja-cuerpo { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.franja-cuerpo { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto;
+  gap: 12px; align-items: center; min-width: 0; min-height: 78px; }
 .franja-icono { display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   width: 38px; height: 38px; border-radius: 10px; background: var(--tarjeta-secundaria);
   color: var(--verde-texto); font-size: 15px; font-weight: 700; }
 .franja-texto { flex: 1; min-width: 0; }
-#franja-titulo { font-size: 13.5px; line-height: 1.4; margin: 0 0 3px; font-weight: 650; }
-#franja-resumen { font-size: 12px; color: var(--suave); margin: 0; line-height: 1.5; }
+#franja-titulo { font-size: 13.5px; line-height: 1.4; margin: 0 0 3px; font-weight: 650;
+  overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+#franja-resumen { font-size: 12px; color: var(--suave); margin: 0; line-height: 1.5;
+  overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+#franja-fuente { display: inline-block; margin-top: 4px; font-size: 11px;
+  color: var(--verde-texto); text-decoration: none; }
+#franja-fuente:hover { text-decoration: underline; }
+#franja-fecha { display: block; font-size: 10.5px; color: var(--suave); margin-top: 2px; }
 #franja-ver { flex-shrink: 0; padding: 5px 10px; border-radius: 8px; font-size: 11.5px; }
 #franja-detalle { white-space: pre-wrap; font-size: 12.5px; line-height: 1.6;
-  border-top: 1px dashed var(--borde); padding-top: 10px; margin-top: 10px; }
+  border-top: 1px dashed var(--borde); padding-top: 10px; margin-top: 10px;
+  max-height: 280px; overflow: auto; overflow-wrap: anywhere; }
+#franja-detalle ul { white-space: normal; margin: 8px 0; padding-left: 20px; }
+#franja-detalle li { margin-bottom: 7px; }
+#franja-detalle a { color: var(--verde-texto); }
 #franja-detalle[hidden] { display: none; }
 .franja-pie { display: block; margin: 9px 0 0; font-size: 10.5px;
   color: var(--suave); line-height: 1.5; }
 @media (max-width: 640px) {
-  #franja-local { padding: 10px 11px; margin-bottom: 12px; }
+  #franja-local { padding: 10px 11px; margin: 0 auto 12px; }
   .franja-cabecera { margin-bottom: 9px; gap: 8px; }
-  .franja-filtros { width: 100%; }
-  .franja-filtros button { flex: 1; min-height: 34px; font-size: 12px; padding: 5px 8px; }
-  .franja-cuerpo { flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+  .franja-filtros { display: grid; width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .franja-filtros button { min-height: 36px; font-size: 11.5px; padding: 5px 6px; line-height: 1.3; }
+  .franja-cuerpo { grid-template-columns: 30px minmax(0, 1fr); gap: 8px; align-items: start; min-height: 0; }
+  #franja-titulo { min-height: 2.8em; }
+  #franja-resumen { min-height: 3em; }
+  #franja-fecha { min-height: 3em; }
   .franja-icono { width: 32px; height: 32px; font-size: 13px; }
-  #franja-ver { margin-left: 40px; min-height: 32px; }
-  .franja-texto { flex-basis: calc(100% - 42px); }
+  #franja-ver { grid-column: 2; justify-self: start; margin: 0; min-height: 32px; }
+  .franja-texto { min-width: 0; }
 }
 @media print { #franja-local { display: none !important; } }
 """
 
 BANDA = """
-<section id="franja-local" aria-label="Vista previa de información local, sólo ejemplos">
+<section id="franja-local" aria-label="Información local de Coronel, fuentes consultadas">
   <div class="franja-cabecera">
-    <div class="franja-marca"><strong>En ruta y al día</strong>
-      <span class="franja-demo">VISTA PREVIA LOCAL</span></div>
+    <div class="franja-marca"><strong>Coronel al día</strong>
+      <span class="franja-demo">SÓLO LOCAL</span></div>
     <div class="franja-filtros" aria-label="Elegir tipo de información">
-      <button type="button" data-franja="ruta" aria-pressed="true">Ruta 160</button>
-      <button type="button" data-franja="clima" aria-pressed="false">Meteorología</button>
-      <button type="button" data-franja="noticias" aria-pressed="false">Noticias</button>
+      <button type="button" data-franja="noticias" aria-pressed="true">BioBioChile</button>
+      <button type="button" data-franja="clima" aria-pressed="false">Tiempo en Coronel</button>
+      <button type="button" data-franja="ruta" aria-pressed="false">Ruta 160 · Coronel</button>
     </div>
   </div>
   <div class="franja-cuerpo">
     <span id="franja-icono" class="franja-icono" aria-hidden="true">160</span>
     <div class="franja-texto" aria-live="polite" aria-atomic="true">
       <p id="franja-titulo"></p><p id="franja-resumen"></p>
+      <a id="franja-fuente" target="_blank" rel="noopener noreferrer"></a>
+      <time id="franja-fecha"></time>
     </div>
     <button type="button" id="franja-ver" aria-expanded="false"
             aria-controls="franja-detalle">Ver detalle</button>
   </div>
   <div id="franja-detalle" hidden></div>
-  <small class="franja-pie">Datos de ejemplo, no reportes en vivo. Calendario en modo lectura;
-    esta vista no modifica tarjetas ni envía notificaciones.</small>
+  <small class="franja-pie">Fuentes consultadas al generar esta vista; revisa su fecha.
+    Copia local de lectura: no modifica tarjetas ni envía notificaciones.</small>
 </section>
 """
 
@@ -119,17 +108,56 @@ SCRIPT = r"""
 <script>
 (function () {
   'use strict';
-  var datos = JSON.parse(document.getElementById('franja-datos').textContent);
+  var paquete = JSON.parse(document.getElementById('franja-datos').textContent);
+  var datos = paquete.lecturas;
   var botones = document.querySelectorAll('[data-franja]');
   var ver = document.getElementById('franja-ver');
   var detalle = document.getElementById('franja-detalle');
+  function fecha(valor, dia) {
+    var d = new Date(valor);
+    if (!valor || isNaN(d.getTime())) return '';
+    var op = {timeZone: 'America/Santiago', day: '2-digit', month: '2-digit', year: 'numeric'};
+    if (!dia) { op.hour = '2-digit'; op.minute = '2-digit'; op.hour12 = false; }
+    return d.toLocaleString('es-CL', op);
+  }
+  function urlSegura(url) {
+    try {
+      var u = new URL(url);
+      return u.protocol === 'https:' && !u.username && !u.password && (!u.port || u.port === '443') &&
+        ['www.biobiochile.cl', 'biobio.transporteinforma.cl', 'open-meteo.com'].indexOf(u.hostname) >= 0;
+    } catch (e) { return false; }
+  }
   function pintar(id) {
     var info = datos.filter(function (d) { return d.id === id; })[0];
     if (!info) return;
+    var edad = Date.now() - new Date(info.consultado).getTime();
+    var vencido = !isFinite(edad) || edad < -300000 || edad > info.vigencia_segundos * 1000;
+    document.getElementById('franja-local').dataset.estado = vencido ? 'vencido' : info.estado;
     document.getElementById('franja-icono').textContent = info.icono;
-    document.getElementById('franja-titulo').textContent = info.titulo;
-    document.getElementById('franja-resumen').textContent = info.resumen;
-    detalle.textContent = info.detalle;
+    document.getElementById('franja-titulo').textContent = vencido ? info.categoria + ': datos desactualizados' : info.titulo;
+    document.getElementById('franja-resumen').textContent = vencido
+      ? 'Abre la fuente para revisar información reciente. Esta consulta local ya no se presenta como actual.' : info.resumen;
+    var fuente = document.getElementById('franja-fuente');
+    fuente.textContent = info.fuente + ' ↗';
+    fuente.hidden = !urlSegura(info.url);
+    if (!fuente.hidden) fuente.href = info.url;
+    var meta = document.getElementById('franja-fecha');
+    meta.textContent = (info.publicado ? (info.id === 'clima' ? 'Datos del: ' : 'Publicado: ')
+      + fecha(info.publicado, info.publicado_precision === 'dia') + ' · ' : '')
+      + 'Consulta: ' + fecha(info.consultado);
+    meta.dateTime = info.consultado;
+    detalle.textContent = vencido ? 'Regenera la vista local para volver a consultar las fuentes.' : info.detalle;
+    if (!vencido && info.enlaces && info.enlaces.length) {
+      var lista = document.createElement('ul');
+      info.enlaces.forEach(function (entrada) {
+        if (!urlSegura(entrada.url)) return;
+        var li = document.createElement('li'), a = document.createElement('a');
+        a.textContent = entrada.titulo + ' · ' + fecha(entrada.fecha, entrada.precision === 'dia');
+        a.href = entrada.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+        li.appendChild(a); lista.appendChild(li);
+      });
+      detalle.appendChild(lista);
+    }
     detalle.hidden = true;
     ver.textContent = 'Ver detalle';
     ver.setAttribute('aria-expanded', 'false');
@@ -141,13 +169,13 @@ SCRIPT = r"""
     ver.setAttribute('aria-expanded', String(!detalle.hidden));
     ver.textContent = detalle.hidden ? 'Ver detalle' : 'Ocultar detalle';
   });
-  pintar('ruta');
+  pintar('noticias');
 })();
 </script>
 """
 
 
-def crear_vista_previa(html: str) -> str:
+def crear_vista_previa(html: str, datos: dict) -> str:
     for marca in ("</style>", "</header>", "</body>"):
         if marca not in html:
             raise ValueError("La página base no contiene " + marca)
@@ -156,18 +184,29 @@ def crear_vista_previa(html: str) -> str:
                             r'\g<1>null\g<2>', html, count=1, flags=re.S)
     if cambios != 1:
         raise ValueError("No se pudo poner la vista previa en modo lectura")
+    if {d.get('id') for d in datos.get('lecturas', [])} != {'ruta', 'clima', 'noticias'}:
+        raise ValueError("Falta información o estado de alguna fuente")
+    # El clima de la cabecera también usa Coronel sólo en esta copia. No tocar
+    # la ubicación guardada del calendario normal ni pedir permiso de ubicación.
+    html = html.replace("var lugarClimaDefecto = { latitud: -36.83, longitud: -73.05, nombre: 'Concepción' };",
+                        "var lugarClimaDefecto = { latitud: -37.03386, longitud: -73.14019, nombre: 'Coronel' };")
+    html = html.replace('edufacil-clima-lugar', 'edufacil-clima-lugar-vista-coronel')
+    html = html.replace("lugar.propia ? lugar.nombre : 'Mi ubicación'", "lugar.propia ? lugar.nombre : 'Coronel'")
     html = html.replace("</style>", CSS + "\n</style>", 1)
     html = html.replace("</header>", "</header>\n" + BANDA, 1)
-    datos = json.dumps(EJEMPLOS, ensure_ascii=False).replace("</", "<\\/")
+    datos_json = json.dumps(datos, ensure_ascii=False).replace("</", "<\\/")
     html = html.replace("</body>", '<script type="application/json" id="franja-datos">'
-                        + datos + "</script>\n" + SCRIPT + "\n</body>", 1)
+                         + datos_json + "</script>\n" + SCRIPT + "\n</body>", 1)
     return html
 
 
-def generar(salida: Path = RAIZ / "salida") -> Path:
+def generar(salida: Path = RAIZ / "salida", datos: dict | None = None) -> Path:
     origen = salida / "calendario_evaluaciones.html"
     destino = salida / "vista_previa_alertas.html"
-    destino.write_text(crear_vista_previa(origen.read_text(encoding="utf-8")), encoding="utf-8")
+    html = origen.read_text(encoding="utf-8")
+    datos = datos if datos is not None else recopilar()
+    destino.write_text(crear_vista_previa(html, datos), encoding="utf-8")
+    (salida / "informacion_local.json").write_text(json.dumps(datos, ensure_ascii=False, indent=2), encoding="utf-8")
     return destino
 
 
@@ -177,4 +216,4 @@ if __name__ == "__main__":
     except (OSError, ValueError):
         raise SystemExit("No se pudo generar la vista. Primero genera el calendario local.")
     print("Vista previa LOCAL: http://127.0.0.1:8765/vista_previa_alertas.html")
-    print("Son ejemplos; no hay noticias reales conectadas ni se publica nada.")
+    print("Fuentes consultadas. Datos con fecha de consulta; no se publica ni se envían avisos.")

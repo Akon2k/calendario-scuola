@@ -167,11 +167,19 @@ funcionan sin problemas.
 
 ## El resumen de los sábados y los avisos
 
-Vista de diseño **sólo local** de una franja de Ruta 160, meteorología y
+Vista **sólo local** de una franja de Ruta 160, meteorología y
 noticias: `python vista_previa_alertas.py` crea `salida/vista_previa_alertas.html`.
-Contiene ejemplos explícitos, sin fuentes reales ni avisos, y desconecta
-Supabase sólo en esa copia de lectura. No está en la lista de publicación y
-no modifica el calendario publicado.
+Consulta títulos de BioBioChile (prioriza Coronel), tiempo de Open-Meteo para
+Coronel y la lista pública de Transporte Informa Biobío. Muestra fuente,
+fecha y hora de consulta, no titulares de ejemplo. La ausencia de reportes
+viales recientes no se presenta como ruta despejada. Si una fuente falla o
+caduca, lo indica sin inventar datos. Las alertas oficiales DMC/SENAPRED no
+están integradas: el pronóstico no se etiqueta como una alerta.
+Los datos se consultan al generar la vista (no es monitoreo continuo).
+`salida/informacion_local.json` conserva esa lectura. Ambos archivos quedan
+fuera del publicador; Supabase se desconecta sólo en la copia de lectura.
+No modifica el calendario publicado ni envía avisos. El ancho de la franja
+se alinea con los 1180 px del calendario y se adapta a pantallas pequeñas.
 
 **Avisos inmediatos por ediciones y PDF: activados en Supabase el 27/10/2026.**
 Las ediciones, fechas, eventos nuevos, PDF y anulaciones disparan el envío
