@@ -378,6 +378,19 @@ CONTROL = r"""
 """
 
 
+def colocar_liston(html: str, liston: str) -> str:
+    """Sitúa el listón en una fila completa, justo encima de la barra del mes."""
+    marca = '<div class="acciones">'
+    if marca not in html:
+        raise ValueError('No se encontró la barra del calendario para colocar el listón')
+    html = re.sub(r'<style id="posicion-liston">.*?</style>', '', html, flags=re.S)
+    estilo = ('<style id="posicion-liston">\n'
+              'header #franja-local.liston-local { flex: 0 0 100%; margin: 0; }\n</style>\n')
+    html = html.replace('</head>', estilo + '</head>', 1)
+    html = re.sub(r'(?m)^[ \t]+(?=\n\s*<div class="acciones">)', '', html)
+    return html.replace(marca, liston.lstrip('\n') + '\n' + marca, 1)
+
+
 def crear_liston(html: str, datos: dict, mensajes: list[dict] | None = None,
                  noticias: dict | None = None) -> str:
     html = html.replace(ESTILO, '')
@@ -386,7 +399,7 @@ def crear_liston(html: str, datos: dict, mensajes: list[dict] | None = None,
     vista = re.sub(r'<button\b[^>]*\bid="imprimir"[^>]*>.*?</button>', BOTON_IMPRIMIR, vista, count=1, flags=re.S)
     vista = re.sub(r'<button\b[^>]*\bid="descargar"[^>]*>.*?</button>', BOTON_DESCARGAR, vista, count=1, flags=re.S)
     vista = re.sub(r'<details id="ayuda">.*?</details>', AYUDA, vista, count=1, flags=re.S)
-    vista = vista.replace(BANDA, LISTON, 1)
+    vista = colocar_liston(vista.replace(BANDA, '', 1), LISTON)
     vista = vista.replace('</style>', ESTILO + '\n</style>\n' + ESTILO_BOTONES, 1)
     vista = vista.replace('</body>', CONTROL + '\n</body>', 1)
     return integrar_noticias(vista, noticias) if noticias is not None else vista

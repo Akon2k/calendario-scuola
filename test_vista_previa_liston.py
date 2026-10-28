@@ -29,6 +29,7 @@ def main():
     vista = crear_liston(html, datos, [])
     assert 'class="liston-local"' in vista
     assert vista.count('id="franja-local"') == 1
+    assert vista.index('<header>') < vista.index('id="franja-local"') < vista.index('<div class="acciones">') < vista.index('</header>')
     assert vista.count('id="franja-titulo"') == 1
     assert '<a id="franja-titulo" target="_blank" rel="noopener noreferrer"' in vista
     imprimir = re.search(r'<button id="imprimir"[^>]*>(.*?)</button>', vista, re.S)
@@ -63,7 +64,7 @@ def main():
     assert not any(a == 'vista_previa_liston.html' for a, _ in ARCHIVOS)
     repetida = crear_liston(vista, datos, [])
     for ident in ('franja-local', 'franja-datos', 'franja-ver', 'liston-pausa', 'mensajes-locales', 'vista-local-sin-cache',
-                  'imprimir', 'descargar', 'botones-icono-locales'):
+                  'imprimir', 'descargar', 'botones-icono-locales', 'posicion-liston'):
         assert repetida.count('id="' + ident + '"') == 1, 'no duplicar ' + ident
     assert repetida.count('var paquete = JSON.parse(document.getElementById(\'franja-datos\')') == 2, 'un control de franja y uno de listón'
     assert repetida.count('#franja-local.liston-local { padding:') == 1

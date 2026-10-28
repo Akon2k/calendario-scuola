@@ -10,7 +10,7 @@ from edufacil.informacion_local import recopilar
 from vista_noticias_scuola import integrar_noticias, recopilar_noticias, recopilar_noticias_nube
 from vista_previa_alertas import CSS as CSS_ALERTA, SCRIPT as SCRIPT_ALERTA, retirar_franja
 from vista_previa_liston import (
-    AYUDA, BOTON_DESCARGAR, BOTON_IMPRIMIR, CONTROL, ESTILO, ESTILO_BOTONES, LISTON,
+    AYUDA, BOTON_DESCARGAR, BOTON_IMPRIMIR, CONTROL, ESTILO, ESTILO_BOTONES, LISTON, colocar_liston,
 )
 
 # Compatibilidad con la integración anterior; nunca ocultar edición/PWA/avisos.
@@ -45,7 +45,7 @@ def aplicar_noticias_y_liston(html: str, datos: dict | None = None, noticias: di
                             'title="Consulta las fechas y fuentes al abrir el detalle."')
     liston = liston.replace('aria-label="Listón local de tiempo, Ruta 160 y noticias"',
                             'aria-label="Listón de tiempo, Ruta 160 y noticias"')
-    html = html.replace('</header>', '</header>\n' + liston, 1)
+    html = colocar_liston(html, liston)
     html = html.replace('</style>', CSS_PUBLICO + '\n' + ESTILO + '\n</style>\n' + ESTILO_BOTONES, 1)
     def serializar(valor):
         return json.dumps(valor, ensure_ascii=False, allow_nan=False).replace('</', '<\\/')

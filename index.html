@@ -655,6 +655,18 @@
 /* Exclusivo de la copia local: no se integra en la plantilla publicada. */
 
 
+
+
+
+/* Exclusivo de la copia local: no se integra en la plantilla publicada. */
+
+
+
+
+
+/* Exclusivo de la copia local: no se integra en la plantilla publicada. */
+
+
 #franja-local {
   width: 100%; max-width: 1180px; min-width: 0; box-sizing: border-box;
   border: 1px solid var(--borde); border-left: 4px solid var(--verde);
@@ -830,6 +842,12 @@
 </style>
 
 
+
+
+
+<style id="posicion-liston">
+header #franja-local.liston-local { flex: 0 0 100%; margin: 0; }
+</style>
 </head>
 <body>
 
@@ -853,7 +871,35 @@
       <span id="clima-temperatura">— °C</span></span>
     <div id="clima-pronostico" aria-label="Pronóstico para los próximos tres días"></div>
   </div>
-  <div class="acciones">
+
+
+
+<section id="franja-local" class="liston-local" aria-label="Listón de tiempo, Ruta 160 y noticias">
+  <div class="liston-fila">
+    <div class="liston-marca" title="Consulta las fechas y fuentes al abrir el detalle.">
+      <strong>Al día</strong><span id="liston-categoria">Tiempo en Coronel</span>
+    </div>
+    <a id="franja-titulo" target="_blank" rel="noopener noreferrer" role="button" tabindex="0"
+       aria-controls="franja-detalle" aria-expanded="false"></a>
+    <div class="liston-controles" aria-label="Controles del listón">
+      <span id="liston-contador"></span>
+      <button id="liston-anterior" type="button" aria-label="Información anterior" title="Anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg></button>
+      <button id="liston-pausa" type="button" aria-label="Pausar alternancia" aria-pressed="false" title="Pausar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg></button>
+      <button id="liston-siguiente" type="button" aria-label="Información siguiente" title="Siguiente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10 6 6 6-6 6"/></svg></button>
+      <button id="franja-ver" type="button" aria-controls="franja-detalle" aria-expanded="false" title="Ver detalle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></svg></button>
+    </div>
+  </div>
+  <div id="franja-detalle" hidden></div>
+  <div hidden>
+    <span id="franja-icono"></span><p id="franja-resumen"></p>
+    <a id="franja-fuente" target="_blank" rel="noopener noreferrer"></a><time id="franja-fecha"></time>
+    <button data-franja="clima" type="button" aria-pressed="true"></button>
+    <button data-franja="ruta" type="button" aria-pressed="false"></button>
+    <button data-franja="noticias" type="button" aria-pressed="false"></button>
+  </div>
+</section>
+
+<div class="acciones">
     <button id="anterior" title="Mes anterior">&#8249;</button>
     <span id="mes-actual"></span>
     <button id="siguiente" title="Mes siguiente">&#8250;</button>
@@ -882,30 +928,7 @@ stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="fal
   </div>
 </header>
 
-<section id="franja-local" class="liston-local" aria-label="Listón de tiempo, Ruta 160 y noticias">
-  <div class="liston-fila">
-    <div class="liston-marca" title="Consulta las fechas y fuentes al abrir el detalle.">
-      <strong>Al día</strong><span id="liston-categoria">Tiempo en Coronel</span>
-    </div>
-    <a id="franja-titulo" target="_blank" rel="noopener noreferrer" role="button" tabindex="0"
-       aria-controls="franja-detalle" aria-expanded="false"></a>
-    <div class="liston-controles" aria-label="Controles del listón">
-      <span id="liston-contador"></span>
-      <button id="liston-anterior" type="button" aria-label="Información anterior" title="Anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg></button>
-      <button id="liston-pausa" type="button" aria-label="Pausar alternancia" aria-pressed="false" title="Pausar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg></button>
-      <button id="liston-siguiente" type="button" aria-label="Información siguiente" title="Siguiente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10 6 6 6-6 6"/></svg></button>
-      <button id="franja-ver" type="button" aria-controls="franja-detalle" aria-expanded="false" title="Ver detalle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></svg></button>
-    </div>
-  </div>
-  <div id="franja-detalle" hidden></div>
-  <div hidden>
-    <span id="franja-icono"></span><p id="franja-resumen"></p>
-    <a id="franja-fuente" target="_blank" rel="noopener noreferrer"></a><time id="franja-fecha"></time>
-    <button data-franja="clima" type="button" aria-pressed="true"></button>
-    <button data-franja="ruta" type="button" aria-pressed="false"></button>
-    <button data-franja="noticias" type="button" aria-pressed="false"></button>
-  </div>
-</section>
+
 
 
 
@@ -924,6 +947,8 @@ stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="fal
     stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20"
     height="16" rx="2"/><path d="m22 7-10 7L2 7"/></svg> Mensajes <span class="experimental">(Experimental)</span><span class="cuenta"
     id="cuenta-mensajes"></span></button>
+
+
 
 
 <button id="tab-noticias-scuola" type="button" aria-controls="noticias-scuola">
@@ -947,6 +972,8 @@ stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" heig
 
   <aside class="tarjeta" id="detalle"></aside>
 </main>
+
+
 
 
 
@@ -984,6 +1011,8 @@ stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" heig
 </div>
 
 <section id="leyenda"></section>
+
+
 
 
 
@@ -1043,6 +1072,8 @@ stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" heig
     </ol>
   </div>
 </details>
+
+
 
 
 
@@ -3584,7 +3615,33 @@ stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" heig
 
 
 
-<script type="application/json" id="franja-datos">{"consultado": "2026-10-28T12:34:22.477304-03:00", "lecturas": [{"id": "ruta", "icono": "160", "categoria": "Ruta 160 · Coronel", "fuente": "Transporte Informa Biobío", "url": "https://biobio.transporteinforma.cl/estado-de-movilidad/", "estado": "sinreportes", "consultado": "2026-10-28T12:34:22.477304-03:00", "publicado": "", "enlaces": [], "vigencia_segundos": 3600, "titulo": "Ruta 160 · Coronel: sin reportes recientes verificados", "resumen": "No apareció un reporte de las últimas 24 h para este sector en la lista consultada. No significa que la ruta esté despejada.", "detalle": "Se revisaron 24 reportes de la lista pública de Transporte Informa Biobío.\nSe filtró por Ruta 160 y Coronel y por fecha de publicación.\nLa consulta no cubre todos los canales ni mide congestión en tiempo real. Revisa la fuente antes de viajar."}, {"id": "clima", "icono": "☁", "categoria": "Tiempo en Coronel", "fuente": "Open-Meteo", "url": "https://open-meteo.com/", "estado": "ok", "consultado": "2026-10-28T12:34:22.477304-03:00", "publicado": "2026-10-28T12:30:00-03:00", "enlaces": [], "vigencia_segundos": 10800, "titulo": "Coronel: 22,5 °C · despejado", "resumen": "Viento 7,4 km/h · precipitación 0 mm. Estimación de Open-Meteo, no alerta oficial.", "detalle": "Tiempo estimado para Coronel por modelos meteorológicos.\n\n28/10: 11,5–23,5 °C · probabilidad de lluvia 0%\n29/10: 13,6–20,5 °C · probabilidad de lluvia 0%\n30/10: 12,6–20,1 °C · probabilidad de lluvia 2%\n\nLas alertas oficiales de DMC/SENAPRED no están integradas en esta vista."}, {"id": "noticias", "icono": "BB", "categoria": "BioBioChile", "fuente": "BioBioChile", "url": "https://www.biobiochile.cl/noticias/nacional/region-del-bio-bio/2026/10/28/detencion-ciudadana-en-coronel-hombre-fue-atado-a-un-poste-luego-de-robar-bebidas-desde-un-negocio.shtml", "estado": "ok", "consultado": "2026-10-28T12:34:22.477304-03:00", "publicado": "2026-10-28T12:32:00-03:00", "enlaces": [{"titulo": "Detención ciudadana en Coronel: hombre fue atado a un poste luego de robar bebidas desde un negocio", "url": "https://www.biobiochile.cl/noticias/nacional/region-del-bio-bio/2026/10/28/detencion-ciudadana-en-coronel-hombre-fue-atado-a-un-poste-luego-de-robar-bebidas-desde-un-negocio.shtml", "fecha": "2026-10-28T12:32:00-03:00"}, {"titulo": "Tutores de CIP Coronel acusados de drogarse con internos se hacen test y el resultado es negativo", "url": "https://www.biobiochile.cl/noticias/nacional/region-del-bio-bio/2026/10/28/tutores-de-cip-coronel-acusados-de-drogarse-con-internos-se-hacen-test-y-el-resultado-es-negativo.shtml", "fecha": "2026-10-28T10:40:00-03:00"}, {"titulo": "Prohíben ingreso al agua de playa Maule de Coronel por presencia de fragata portuguesa", "url": "https://www.biobiochile.cl/noticias/nacional/region-del-bio-bio/2026/10/27/prohiben-ingreso-al-agua-de-playa-maule-de-coronel-por-presencia-de-fragata-portuguesa.shtml", "fecha": "2026-10-27T11:05:00-03:00"}, {"titulo": "Caso Embotelladora Llacolén: formalizan a alcalde de Coronel, Boris Chamorro, por fraude al Fisco", "url": "https://www.biobiochile.cl/noticias/nacional/region-del-bio-bio/2026/10/26/caso-embotelladora-llacolen-formalizan-a-alcalde-de-coronel-boris-chamorro-por-fraude-al-fisco.shtml", "fecha": "2026-10-26T12:23:00-03:00"}, {"titulo": "El horror y error que senadores del Bío Bío ven detrás de rebaja de penas a depredadores sexuales", "url": "https://www.biobiochile.cl/noticias/nacional/region-del-bio-bio/2026/10/28/el-horror-y-error-que-senadores-del-bio-bio-ven-detras-de-rebaja-de-penas-a-depredadores-sexuales.shtml", "fecha": "2026-10-28T05:15:00-03:00"}, {"titulo": "Preocupación en vecinos de Villa Universitaria en Concepción tras reportar plaga de garrapatas", "url": "https://www.biobiochile.cl/noticias/nacional/region-del-bio-bio/2026/10/27/preocupacion-en-vecinos-de-villa-universitaria-en-concepcion-tras-reportar-plaga-de-garrapatas.shtml", "fecha": "2026-10-27T15:07:00-03:00"}, {"titulo": "Condenan a 12 años de cárcel a hombre que violó y embarazó a niña de 11 años en Los Ángeles", "url": "https://www.biobiochile.cl/noticias/nacional/region-del-bio-bio/2026/10/27/condenan-a-12-anos-de-carcel-a-hombre-que-violo-y-embarazo-a-nina-de-11-anos-en-los-angeles.shtml", "fecha": "2026-10-27T14:38:00-03:00"}, {"titulo": "Obra debía estar lista hoy, pero no ocurrirá: empresa no cumple plazo y siguen trabajos en Plaza Perú", "url": "https://www.biobiochile.cl/noticias/nacional/region-del-bio-bio/2026/10/27/obra-debia-estar-lista-hoy-pero-no-ocurrira-empresa-no-cumple-plazo-y-siguen-trabajos-en-plaza-peru.shtml", "fecha": "2026-10-27T12:59:00-03:00"}, {"titulo": "Contraloría detecta fallas en incautaciones en cárceles del Bío Bío: 1.003 formularios perdidos", "url": "https://www.biobiochile.cl/noticias/nacional/region-del-bio-bio/2026/10/27/contraloria-detecta-fallas-en-incautaciones-en-carceles-del-bio-bio-1-003-formularios-perdidos.shtml", "fecha": "2026-10-27T12:09:00-03:00"}, {"titulo": "Una mujer muerta y dos personas en riesgo vital deja choque de automóvil con camión en Ruta 160", "url": "https://www.biobiochile.cl/noticias/nacional/region-del-bio-bio/2026/10/27/una-mujer-muerta-y-dos-personas-en-riesgo-vital-deja-choque-de-automovil-con-camion-en-ruta-160.shtml", "fecha": "2026-10-27T07:52:00-03:00"}], "vigencia_segundos": 86400, "titulo": "Detención ciudadana en Coronel: hombre fue atado a un poste luego de robar bebidas desde un negocio", "resumen": "BioBioChile · Coronel y Región del Biobío. Títulos y enlaces a las publicaciones originales.", "detalle": ""}]}</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script type="application/json" id="franja-datos">{"consultado": "2026-10-28T13:34:22.473453-03:00", "lecturas": [{"id": "ruta", "icono": "160", "categoria": "Ruta 160 · Coronel", "fuente": "Transporte Informa Biobío", "url": "https://biobio.transporteinforma.cl/estado-de-movilidad/", "estado": "sinreportes", "consultado": "2026-10-28T13:34:22.473453-03:00", "publicado": "", "enlaces": [], "vigencia_segundos": 3600, "titulo": "Ruta 160 · Coronel: sin reportes recientes verificados", "resumen": "No apareció un reporte de las últimas 24 h para este sector en la lista consultada. No significa que la ruta esté despejada.", "detalle": "Se revisaron 24 reportes de la lista pública de Transporte Informa Biobío.\nSe filtró por Ruta 160 y Coronel y por fecha de publicación.\nLa consulta no cubre todos los canales ni mide congestión en tiempo real. Revisa la fuente antes de viajar."}, {"id": "clima", "icono": "☁", "categoria": "Tiempo en Coronel", "fuente": "Open-Meteo", "url": "https://open-meteo.com/", "estado": "ok", "consultado": "2026-10-28T13:34:22.473453-03:00", "publicado": "2026-10-28T13:30:00-03:00", "enlaces": [], "vigencia_segundos": 10800, "titulo": "Coronel: 23,1 °C · despejado", "resumen": "Viento 9,5 km/h · precipitación 0 mm. Estimación de Open-Meteo, no alerta oficial.", "detalle": "Tiempo estimado para Coronel por modelos meteorológicos.\n\n28/10: 11,5–23,5 °C · probabilidad de lluvia 0%\n29/10: 13,6–20,5 °C · probabilidad de lluvia 0%\n30/10: 12,6–20,1 °C · probabilidad de lluvia 2%\n\nLas alertas oficiales de DMC/SENAPRED no están integradas en esta vista."}, {"id": "noticias", "icono": "BB", "categoria": "BioBioChile", "fuente": "BioBioChile", "url": "https://www.biobiochile.cl/noticias/nacional/region-del-bio-bio/2026/10/28/detencion-ciudadana-en-coronel-hombre-fue-atado-a-un-poste-luego-de-robar-bebidas-desde-un-negocio.shtml", "estado": "ok", "consultado": "2026-10-28T13:34:22.473453-03:00", "publicado": "2026-10-28T12:32:00-03:00", "enlaces": [{"titulo": "Detención ciudadana en Coronel: hombre fue atado a un poste luego de robar bebidas desde un negocio", "url": "https://www.biobiochile.cl/noticias/nacional/region-del-bio-bio/2026/10/28/detencion-ciudadana-en-coronel-hombre-fue-atado-a-un-poste-luego-de-robar-bebidas-desde-un-negocio.shtml", "fecha": "2026-10-28T12:32:00-03:00"}, {"titulo": "Tutores de CIP Coronel acusados de drogarse con internos se hacen test y el resultado es negativo", "url": "https://www.biobiochile.cl/noticias/nacional/region-del-bio-bio/2026/10/28/tutores-de-cip-coronel-acusados-de-drogarse-con-internos-se-hacen-test-y-el-resultado-es-negativo.shtml", "fecha": "2026-10-28T10:40:00-03:00"}, {"titulo": "Prohíben ingreso al agua de playa Maule de Coronel por presencia de fragata portuguesa", "url": "https://www.biobiochile.cl/noticias/nacional/region-del-bio-bio/2026/10/27/prohiben-ingreso-al-agua-de-playa-maule-de-coronel-por-presencia-de-fragata-portuguesa.shtml", "fecha": "2026-10-27T11:05:00-03:00"}, {"titulo": "Caso Embotelladora Llacolén: formalizan a alcalde de Coronel, Boris Chamorro, por fraude al Fisco", "url": "https://www.biobiochile.cl/noticias/nacional/region-del-bio-bio/2026/10/26/caso-embotelladora-llacolen-formalizan-a-alcalde-de-coronel-boris-chamorro-por-fraude-al-fisco.shtml", "fecha": "2026-10-26T12:23:00-03:00"}, {"titulo": "El horror y error que senadores del Bío Bío ven detrás de rebaja de penas a depredadores sexuales", "url": "https://www.biobiochile.cl/noticias/nacional/region-del-bio-bio/2026/10/28/el-horror-y-error-que-senadores-del-bio-bio-ven-detras-de-rebaja-de-penas-a-depredadores-sexuales.shtml", "fecha": "2026-10-28T05:15:00-03:00"}, {"titulo": "Preocupación en vecinos de Villa Universitaria en Concepción tras reportar plaga de garrapatas", "url": "https://www.biobiochile.cl/noticias/nacional/region-del-bio-bio/2026/10/27/preocupacion-en-vecinos-de-villa-universitaria-en-concepcion-tras-reportar-plaga-de-garrapatas.shtml", "fecha": "2026-10-27T15:07:00-03:00"}, {"titulo": "Condenan a 12 años de cárcel a hombre que violó y embarazó a niña de 11 años en Los Ángeles", "url": "https://www.biobiochile.cl/noticias/nacional/region-del-bio-bio/2026/10/27/condenan-a-12-anos-de-carcel-a-hombre-que-violo-y-embarazo-a-nina-de-11-anos-en-los-angeles.shtml", "fecha": "2026-10-27T14:38:00-03:00"}, {"titulo": "Obra debía estar lista hoy, pero no ocurrirá: empresa no cumple plazo y siguen trabajos en Plaza Perú", "url": "https://www.biobiochile.cl/noticias/nacional/region-del-bio-bio/2026/10/27/obra-debia-estar-lista-hoy-pero-no-ocurrira-empresa-no-cumple-plazo-y-siguen-trabajos-en-plaza-peru.shtml", "fecha": "2026-10-27T12:59:00-03:00"}, {"titulo": "Contraloría detecta fallas en incautaciones en cárceles del Bío Bío: 1.003 formularios perdidos", "url": "https://www.biobiochile.cl/noticias/nacional/region-del-bio-bio/2026/10/27/contraloria-detecta-fallas-en-incautaciones-en-carceles-del-bio-bio-1-003-formularios-perdidos.shtml", "fecha": "2026-10-27T12:09:00-03:00"}, {"titulo": "Una mujer muerta y dos personas en riesgo vital deja choque de automóvil con camión en Ruta 160", "url": "https://www.biobiochile.cl/noticias/nacional/region-del-bio-bio/2026/10/27/una-mujer-muerta-y-dos-personas-en-riesgo-vital-deja-choque-de-automovil-con-camion-en-ruta-160.shtml", "fecha": "2026-10-27T07:52:00-03:00"}], "vigencia_segundos": 86400, "titulo": "Detención ciudadana en Coronel: hombre fue atado a un poste luego de robar bebidas desde un negocio", "resumen": "BioBioChile · Coronel y Región del Biobío. Títulos y enlaces a las publicaciones originales.", "detalle": ""}]}</script>
 <script type="application/json" id="liston-config">{"url": "https://icblrmookmpmzpnjeeeh.supabase.co", "key": "sb_publishable_2ynkuLM3hPegnHMFswA1_w_x50ZyPJs"}</script>
 
 <script>

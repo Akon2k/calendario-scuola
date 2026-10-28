@@ -29,7 +29,7 @@ def main():
     repetida = aplicar_noticias_y_liston(vista, datos, noticias)
     for contenido in (vista, repetida):
         for ident in ('franja-local', 'franja-datos', 'liston-config', 'tab-noticias-scuola', 'scuola-lector',
-                      'control-noticias-scuola', 'imprimir', 'descargar', 'botones-icono-locales'):
+                      'control-noticias-scuola', 'imprimir', 'descargar', 'botones-icono-locales', 'posicion-liston'):
             assert contenido.count('id="' + ident + '"') == 1, ident
         cfg = json.loads(re.search(r'id="nube">(.*?)</script>', contenido, re.S)[1])
         assert cfg == nube
@@ -42,6 +42,7 @@ def main():
         assert '/rest/v1/liston_publico?select=datos&id=eq.true' in contenido
         assert contenido.count('var paquete = JSON.parse') == 2
         assert 'Descargar calendario (.ics)' in contenido
+        assert contenido.index('<header>') < contenido.index('id="franja-local"') < contenido.index('<div class="acciones">') < contenido.index('</header>')
     local = crear_liston(vista, datos, [], noticias)
     assert 'id="liston-config"' not in local, 'la vista local no se conecta a la fuente de producción'
     assert '<script type="application/json" id="nube">null</script>' in local

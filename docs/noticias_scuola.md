@@ -123,6 +123,8 @@ una noticia ficticia ni envía avisos. El diagnóstico de cron y permisos es
 `edufacil/noticias_liston.py` aplica el diseño aprobado a la página de producción:
 tiempo, Ruta 160 y todas las noticias; botones de impresora y descarga ICS
 con etiqueta accesible y leyenda. Reemplaza la integración anterior sin duplicarla.
+El listón ocupa una fila completa de la cabecera, justo encima de la barra
+del mes y sus botones (Hoy, tema, impresión y descarga), tanto en móvil como en PC.
 Las noticias del listón priorizan Coronel; si no hay ningún titular reciente
 de Coronel en la fuente regional, se utiliza la portada nacional de BioBioChile.
 Sólo se muestran titulares fechados y enlazados a publicaciones originales.
