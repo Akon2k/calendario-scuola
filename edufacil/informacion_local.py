@@ -19,6 +19,7 @@ from bs4 import BeautifulSoup
 CHILE = ZoneInfo("America/Santiago")
 BIOBIO = "https://www.biobiochile.cl/lista/categorias/region-del-bio-bio"
 BIOBIO_NACIONAL = "https://www.biobiochile.cl/lista/categorias/nacional"
+MAX_NOTICIAS = 10
 TRANSITO = "https://biobio.transporteinforma.cl/estado-de-movilidad/"
 AJAX_TRANSITO = "https://biobio.transporteinforma.cl/wp-admin/admin-ajax.php"
 METEO = "https://api.open-meteo.com/v1/forecast"
@@ -96,7 +97,7 @@ def parsear_noticias(html: str, ahora: datetime, *, nacional: bool = False) -> l
         vistos.add(url)
         noticias.append({"titulo": titulo[:220], "url": url, "fecha": publicada.isoformat()})
     return sorted(noticias, key=lambda n: (
-        "coronel" not in n["titulo"].lower(), -datetime.fromisoformat(n["fecha"]).timestamp()))[:4]
+        "coronel" not in n["titulo"].lower(), -datetime.fromisoformat(n["fecha"]).timestamp()))[:MAX_NOTICIAS]
 
 
 def noticias(ahora: datetime) -> dict:

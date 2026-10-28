@@ -67,6 +67,19 @@ def main():
         sin_nacionales = info.noticias(AHORA)
     assert sin_nacionales['estado'] == 'sinreportes' and sin_nacionales['enlaces'] == []
     assert sin_nacionales['url'] == info.BIOBIO_NACIONAL
+    muchas_regionales = ''.join(noticia('Regional ' + str(i), 'Martes 27 Octubre, 2026 | 20:00',
+        URL + 'regional-' + str(i) + '.shtml') for i in range(15))
+    local_prioritaria = noticia('Coronel tiene prioridad', 'Martes 27 Octubre, 2026 | 11:00', URL + 'coronel-prioritaria.shtml')
+    seleccion = info.parsear_noticias(muchas_regionales + local_prioritaria * 2, AHORA)
+    assert info.MAX_NOTICIAS == 10 and len(seleccion) == 10
+    assert seleccion[0]['titulo'] == 'Coronel tiene prioridad'
+    assert len({n['url'] for n in seleccion}) == 10, 'no repetir titulares para completar el cupo'
+    muchas_nacionales = ''.join(noticia('Nacional ' + str(i), 'Martes 27 Octubre, 2026 | 20:00',
+        'https://www.biobiochile.cl/noticias/nacional/chile/2026/10/27/nacional-' + str(i) + '.shtml') for i in range(15))
+    with patch.object(info, 'descargar', side_effect=[regional, muchas_nacionales]):
+        seleccion_nacional = info.noticias(AHORA)
+    assert len(seleccion_nacional['enlaces']) == 10
+    assert 'Noticias de Chile' in seleccion_nacional['resumen']
     assert info.fecha_es('23 de octubre de 2026').day == 23
     assert info.fecha_es('31 de febrero de 2026') is None
     assert not info.enlace_valido('https://www.biobiochile.cl.evil.example/', 'www.biobiochile.cl')
