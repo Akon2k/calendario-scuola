@@ -535,6 +535,11 @@ _PLANTILLA = r"""<!DOCTYPE html>
                   background: #9ca3af; display: inline-block; }
   .nube.ok::before { background: #16a34a; }
   .nube.mal::before { background: #dc2626; }
+  .avisos-indicador { display: inline-flex; align-items: center; font-size: 12.5px;
+    padding: 3px 8px; border: 1px solid var(--borde); border-radius: 999px;
+    color: var(--suave); cursor: help; }
+  .avisos-indicador.activo { color: var(--verde-texto); border-color: var(--verde); }
+  .avisos-ayuda { flex: 1 1 100%; font-size: 12.5px; color: var(--suave); }
   .acciones-item { display: flex; align-items: center; gap: 8px; margin-top: 6px;
                    flex-wrap: wrap; }
   .corregido { font-size: 11.5px; color: var(--corregido-texto); background: var(--corregido-fondo);
@@ -757,7 +762,10 @@ _PLANTILLA = r"""<!DOCTYPE html>
     <button id="instalar" class="primario">&#128241; Instalar app</button>
     <button id="avisos" class="primario" hidden>&#128276; Avisos</button>
     <button id="probar" hidden>&#129514; Probar aviso</button>
-    <span id="avisos-estado" class="nube" title="Avisos de los sábados y de los cambios"></span>
+    <span id="avisos-estado" class="avisos-indicador pendiente" role="status"
+          aria-live="polite" tabindex="0"
+          title="Pulsa Avisos y permite las notificaciones para recibir los cambios, PDF y el resumen del sábado.">Avisos pendientes</span>
+    <span id="avisos-ayuda" class="avisos-ayuda" role="status" aria-live="polite" hidden></span>
     <span id="nube-estado" class="nube" title="Correcciones comunitarias"></span>
   </div>
 </header>
@@ -2601,10 +2609,31 @@ _PLANTILLA = r"""<!DOCTYPE html>
   var pwaPrompt = null;
   var btnInstalar = document.getElementById('instalar');
   var btnAvisos = document.getElementById('avisos');
+  var estadoAvisos = 'pendiente';
+  var ESTADOS_AVISOS = {
+    pendiente: {texto: 'Avisos pendientes', ayuda: 'Aún no están activados en este navegador. Pulsa Avisos y permite las notificaciones.'},
+    verificando: {texto: 'Avisos: verificando…', ayuda: 'Estoy comprobando la suscripción de este navegador.'},
+    activo: {texto: 'Avisos ✓', ayuda: 'Avisos habilitados en este navegador para cambios, PDF y resumen del sábado. La recepción depende del dispositivo y de la conexión.'},
+    bloqueado: {texto: 'Avisos bloqueados', ayuda: 'El navegador bloquea las notificaciones. Permítelas en la configuración del sitio y vuelve a activar Avisos.'},
+    noDisponible: {texto: 'Avisos no disponibles', ayuda: 'Este navegador no admite avisos. En iPhone abre la aplicación agregada a la pantalla de inicio.'},
+    sinConfigurar: {texto: 'Avisos no configurados', ayuda: 'Los avisos no están configurados en esta página.'},
+    error: {texto: 'Avisos: revisar', ayuda: 'No pude confirmar la suscripción. Revisa la conexión y vuelve a pulsar Avisos.'}
+  };
 
-  function msgAvisos(texto) {
+  function msgAvisos(texto, nuevoEstado) {
     var el = document.getElementById('avisos-estado');
-    if (el) el.textContent = texto || '';
+    if (!el) return;
+    if (nuevoEstado && ESTADOS_AVISOS[nuevoEstado]) estadoAvisos = nuevoEstado;
+    var estadoActual = ESTADOS_AVISOS[estadoAvisos];
+    var detalle = estadoActual.ayuda + (texto ? '\n' + texto : '');
+    el.textContent = estadoActual.texto;
+    el.className = 'avisos-indicador ' + estadoAvisos;
+    el.title = detalle;
+    el.setAttribute('aria-label', estadoActual.texto + '. ' + detalle);
+    // Las instrucciones solicitadas al instalar/probar también se leen en
+    // teléfono, donde no hay mouse para abrir el title del indicador.
+    var ayuda = document.getElementById('avisos-ayuda');
+    if (ayuda) { ayuda.textContent = texto || ''; ayuda.hidden = !texto; }
   }
 
   // el service worker deja la página en caché y recibe los avisos
@@ -2685,9 +2714,22 @@ _PLANTILLA = r"""<!DOCTYPE html>
   // el botón sale «✓ activos» sin volver a pulsar nada; si la suscripción se
   // perdió, se reactiva sola sin pedir permiso otra vez.
   function restaurarAvisos() {
-    if (!window.Notification || window.Notification.permission !== 'granted') return;
-    if (!NUBE || !NUBE.vapid) return;
-    if (!nav || !nav.serviceWorker || !nav.serviceWorker.register) return;
+    if (!window.Notification) { msgAvisos('', 'noDisponible'); return; }
+    if (!NUBE || !NUBE.vapid) { msgAvisos('', 'sinConfigurar'); return; }
+    if (esIos && !enApp) {
+      msgAvisos('iPhone: primero Compartir → Agregar a pantalla de inicio.', 'pendiente');
+      return;
+    }
+    if (!nav || !nav.serviceWorker || !nav.serviceWorker.register) {
+      msgAvisos('', 'noDisponible'); return;
+    }
+    if (window.Notification.permission === 'denied') {
+      msgAvisos('', 'bloqueado'); return;
+    }
+    if (window.Notification.permission !== 'granted') {
+      msgAvisos('', 'pendiente'); return;
+    }
+    msgAvisos('', 'verificando');
     nav.serviceWorker.register('sw.js').then(function (reg) {
       return reg.pushManager.getSubscription().then(function (existe) {
         return existe || reg.pushManager.subscribe({
@@ -2698,10 +2740,10 @@ _PLANTILLA = r"""<!DOCTYPE html>
     }).then(function (sub) {
       if (!sub) return null;
       return guardarSuscripcion(sub).then(function () {
-        msgAvisos('✓ Avisos activos: sábados y cambios.');
+        msgAvisos('', 'activo');
         if (btnAvisos) btnAvisos.disabled = true;
       });
-    }).catch(function () { /* sin red u otro fallo: se queda como estaba */ });
+    }).catch(function () { msgAvisos('', 'error'); });
   }
   if (btnAvisos) restaurarAvisos();
 
@@ -2713,13 +2755,14 @@ _PLANTILLA = r"""<!DOCTYPE html>
   if (btnProbar) {
     btnProbar.addEventListener('click', function () {
       if (!window.Notification) {
-        msgAvisos('Este navegador no admite avisos.'); return;
+        msgAvisos('Este navegador no admite avisos.', 'noDisponible'); return;
       }
       if (window.Notification.permission !== 'granted') {
-        msgAvisos('Primero activa «\u{1F514} Avisos» y vuelve a probar.'); return;
+        msgAvisos('Primero activa «\u{1F514} Avisos» y vuelve a probar.',
+          window.Notification.permission === 'denied' ? 'bloqueado' : 'pendiente'); return;
       }
       if (!nav || !nav.serviceWorker || !nav.serviceWorker.register) {
-        msgAvisos('Este navegador no admite avisos.'); return;
+        msgAvisos('Este navegador no admite avisos.', 'noDisponible'); return;
       }
       var hoy = new Date();
       hoy.setHours(0, 0, 0, 0);
@@ -2772,22 +2815,25 @@ _PLANTILLA = r"""<!DOCTYPE html>
 
   function pedirAvisos() {
     if (!window.Notification) {
-      msgAvisos('Este navegador no admite avisos.'); return;
+      msgAvisos('Este navegador no admite avisos.', 'noDisponible'); return;
     }
     if (!NUBE || !NUBE.vapid) {
-      msgAvisos('Los avisos no están configurados en esta página.'); return;
+      msgAvisos('', 'sinConfigurar'); return;
     }
     if (esIos && !enApp) {
       msgAvisos('iPhone: primero Compartir → «Agregar a pantalla de inicio» '
-                + 'y vuelve a pulsar.');
+                + 'y vuelve a pulsar.', 'pendiente');
       return;
     }
     if (!nav || !nav.serviceWorker || !nav.serviceWorker.register) {
-      msgAvisos('Este navegador no admite avisos.'); return;
+      msgAvisos('Este navegador no admite avisos.', 'noDisponible'); return;
     }
     Promise.resolve(window.Notification.requestPermission()).then(function (p) {
-      if (p !== 'granted') { msgAvisos('Permiso de avisos no concedido.'); return null; }
-      msgAvisos('Activando…');
+      if (p !== 'granted') {
+        msgAvisos('Permiso de avisos no concedido.', p === 'denied' ? 'bloqueado' : 'pendiente');
+        return null;
+      }
+      msgAvisos('Activando…', 'verificando');
       return nav.serviceWorker.register('sw.js').then(function (reg) {
         return reg.pushManager.getSubscription().then(function (existe) {
           return existe || reg.pushManager.subscribe({
@@ -2796,12 +2842,12 @@ _PLANTILLA = r"""<!DOCTYPE html>
           });
         });
       }).then(guardarSuscripcion).then(function () {
-        msgAvisos('✓ Avisos activos: sábados y cambios.');
+        msgAvisos('', 'activo');
         if (btnAvisos) btnAvisos.disabled = true;
       });
     }).catch(function (err) {
       msgAvisos('No se pudo activar: ' +
-                String((err && err.message) || err).slice(0, 90));
+                String((err && err.message) || err).slice(0, 90), 'error');
     });
   }
 

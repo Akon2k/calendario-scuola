@@ -144,6 +144,10 @@ Lo que puede hacer quien la abre:
 - **Descargar .ics**: baja el calendario para Google Calendar o Outlook web.
 - **Instalar app**: la convierte en una app del celular o de la PC.
 - **Avisos**: da de alta el navegador para recibir notificaciones.
+  El indicador muestra **Avisos ✓** sólo después de confirmar la suscripción;
+  en los demás casos dice pendientes, bloqueados, no disponibles o revisar.
+  Al pasar el mouse se ve la explicación completa. El punto verde que cuenta
+  las correcciones pertenece al estado de Supabase y se mantiene separado.
 - **Mensajes**: muestra los comunicados generales desde el 1 de septiembre de
   2026 hasta el presente, del más reciente al más antiguo. La pestaña tiene
   desplazamiento interno y mantiene las dimensiones del calendario.
@@ -162,6 +166,12 @@ Un detalle práctico: si usás Brave en la computadora, los avisos no llegan
 funcionan sin problemas.
 
 ## El resumen de los sábados y los avisos
+
+Vista de diseño **sólo local** de una franja de Ruta 160, meteorología y
+noticias: `python vista_previa_alertas.py` crea `salida/vista_previa_alertas.html`.
+Contiene ejemplos explícitos, sin fuentes reales ni avisos, y desconecta
+Supabase sólo en esa copia de lectura. No está en la lista de publicación y
+no modifica el calendario publicado.
 
 **Avisos inmediatos por ediciones y PDF: activados en Supabase el 27/10/2026.**
 Las ediciones, fechas, eventos nuevos, PDF y anulaciones disparan el envío

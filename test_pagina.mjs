@@ -74,7 +74,7 @@ for (const id of ["datos", "ics-b64", "nube", "mes-actual", "rejilla", "detalle"
                   "descargar", "nuevo", "nube-estado", "modal", "m-titulo",
                   "m-autor", "m-campos", "m-error", "m-cancelar", "m-guardar",
                   "m-adjunto", "m-adjunto-lista", "m-adjunto-archivo",
-                  "instalar", "avisos", "probar", "avisos-estado",
+                  "instalar", "avisos", "probar", "avisos-estado", "avisos-ayuda",
                   "pestanas", "tab-calendario", "tab-mensajes",
                   "cuenta-mensajes", "vista-calendario", "mensajes",
                   "mensajes-lista", "impresion-mes", "impresion-actividades",
@@ -1105,9 +1105,13 @@ ok("avisos: estado restaurado al abrir la app");
 
 // sin Notification el botón de avisos queda oculto y explica el motivo
 if (!porId.avisos.hidden) fallo("«Avisos» debería estar oculto sin Notification");
+if (porId['avisos-estado'].textContent !== 'Avisos no disponibles')
+  fallo('el indicador no explica el estado inicial de los avisos');
+if (porId['avisos-estado'].className.includes('nube'))
+  fallo('el indicador de avisos no debe usar el punto gris de la nube');
 porId.avisos.click();
-if (!porId["avisos-estado"].textContent.includes("no admite"))
-  fallo("avisos sin explicación: " + JSON.stringify(porId["avisos-estado"].textContent));
+if (!porId["avisos-estado"].title.includes("no admite"))
+  fallo("avisos sin explicación al pasar el mouse: " + JSON.stringify(porId["avisos-estado"].title));
 ok("avisos: " + porId["avisos-estado"].textContent);
 
 // «Probar aviso» está escondido a propósito: existe, pero jamás se muestra
@@ -1116,8 +1120,8 @@ if (!/id="probar"[^>]*\shidden/.test(html))
 if (/btnProbar\.hidden\s*=\s*!window\.Notification/.test(html))
   fallo("«Probar aviso» no debe volver a desocultarse solo");
 porId.probar.click();
-if (!porId["avisos-estado"].textContent.includes("no admite"))
-  fallo("probar sin explicación: " + JSON.stringify(porId["avisos-estado"].textContent));
+if (!porId["avisos-estado"].title.includes("no admite"))
+  fallo("probar sin explicación: " + JSON.stringify(porId["avisos-estado"].title));
 ok("probar aviso: " + porId["avisos-estado"].textContent);
 
 // cada prueba cierra la anterior: si no, el tag la reemplaza en silencio
@@ -1128,8 +1132,10 @@ ok("probar aviso: cierra la anterior y lanza una fresca");
 
 // «Instalar app» sin beforeinstallprompt da instrucciones (y no revienta)
 porId.instalar.click();
-if (!porId["avisos-estado"].textContent.includes("Instalar"))
-  fallo("instalar sin instrucción: " + JSON.stringify(porId["avisos-estado"].textContent));
+if (!porId["avisos-estado"].title.includes("Instalar"))
+  fallo("instalar sin instrucción: " + JSON.stringify(porId["avisos-estado"].title));
+if (porId['avisos-ayuda'].hidden || !porId['avisos-ayuda'].textContent.includes('Instalar'))
+  fallo('las instrucciones de instalación también deben verse en teléfono, sin pasar el mouse');
 ok("instalar: " + porId["avisos-estado"].textContent);
 
 // ---- pestañas: calendario y mensajes de la Scuola ----
