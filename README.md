@@ -180,6 +180,52 @@ Los datos se consultan al generar la vista (no es monitoreo continuo).
 fuera del publicador; Supabase se desconecta sólo en la copia de lectura.
 No modifica el calendario publicado ni envía avisos. El ancho de la franja
 se alinea con los 1180 px del calendario y se adapta a pantallas pequeñas.
+Alternativa compacta: `python vista_previa_liston.py` crea
+`salida/vista_previa_liston.html` con las mismas lecturas y conserva la franja
+anterior. Alterna titulares, tiempo y Ruta 160 cada 8 segundos. Pulsar un
+titular abre su noticia original de BioBioChile en otra pestaña, sin desplegable
+de noticias. El clima conserva su detalle y Ruta 160 lo muestra sólo cuando
+hay un reporte reciente; sin información no tiene desplegable. Tiene anterior,
+siguiente y pausa. Se detiene al pasar el mouse, usar el teclado, abrir detalles
+o dejar la pestaña oculta. Con movimiento reducido inicia pausado. También es
+sólo local y está fuera del publicador.
+Para refrescar sus fuentes automáticamente, mantener ejecutándose
+`python actualizar_liston_local.py`: consulta noticias, tiempo y Ruta 160 cada
+15 minutos y reemplaza sólo `salida/informacion_local.json` de forma atómica.
+`--una-vez` hace una única consulta. No instala tareas de Windows ni modifica
+los horarios del calendario. El listón lee ese JSON al abrirse, cada minuto
+y al volver a la pestaña; incorpora novedades en el siguiente cambio sin
+recargar el calendario ni interrumpir detalles abiertos, pausa o lectura.
+Requiere el servidor local y el actualizador en ejecución. Al detenerlos no
+se inventan nuevas consultas: se conservan las fechas y caducidades reales.
+Servidor recomendado para pruebas: `python servidor_vista_local.py` sirve
+`salida/` en `127.0.0.1:8765` con cabeceras `no-store`, sin respuestas 304.
+Las vistas previas desactivan el registro automático del worker y limpian sólo
+la caché `calendario-v*` del origen local; no borran datos, permisos ni estados
+guardados, ni afectan al sitio publicado.
+La alternativa del listón añade las pestañas «Calendario · Mensajes · Noticias
+Scuola». Esta última prefiere la caché de Supabase y conserva la portada
+oficial `/noticia/` como alternativa al generar la vista. Filtra sólo 2026, sin fechas
+futuras. Muestra miniaturas reales de WordPress (normalmente 150×150), títulos
+completos, el extracto publicado por la Scuola y fechas con enlaces al artículo original;
+«Ver más noticias» permite recorrer el año sin cargar todas las imágenes de
+una vez. No mezcla estas noticias con los comunicados ni con BioBioChile.
+Las fotos se solicitan sólo cuando se acercan al área visible de Noticias:
+no se descargan mientras la pestaña esté oculta. Si no se puede verificar una
+miniatura, se conserva el texto sin recurrir a la imagen grande. Los extractos
+se muestran completos tal como los entrega el sitio (algunos ya incluyen «[..]»).
+La lectura queda en `salida/noticias_scuola.json`, también fuera del publicador.
+Noticias Scuola ahora puede leer la caché compartida de Supabase: títulos
+traducidos, lector interno de texto y contador independiente de no leídas.
+El servidor revisa novedades cada 15 minutos; el navegador consulta una
+versión ligera cada minuto y sólo descarga la lista si cambia. No hay avisos
+push por noticias ni publicación de la web. Detalles de permisos, costos,
+traducciones nuevas y configuración: [docs/noticias_scuola.md](docs/noticias_scuola.md).
+Ambas vistas conservan la pestaña «Mensajes de la Scuola» mediante una copia
+de los comunicados reales, consultada por GET al generar el HTML con la
+configuración pública del calendario. El navegador sigue sin conexión a
+Supabase: no modifica ni elimina mensajes ni tarjetas. Los comunicados de
+la copia local no se actualizan en vivo.
 
 **Avisos inmediatos por ediciones y PDF: activados en Supabase el 27/10/2026.**
 Las ediciones, fechas, eventos nuevos, PDF y anulaciones disparan el envío

@@ -25,10 +25,11 @@ MESES = {m: i for i, m in enumerate(("enero", "febrero", "marzo", "abril", "mayo
     "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"), 1)}
 
 
-def descargar(url: str, *, metodo="GET", datos=None, parametros=None) -> str:
+def descargar(url: str, *, metodo="GET", datos=None, parametros=None,
+              agente="CalendarioScuola-Local/1.0") -> str:
     """Timeout y tamaño acotados. Los destinos los fija este módulo."""
     respuesta = requests.request(metodo, url, data=datos, params=parametros,
-        timeout=(5, 20), stream=True, headers={"User-Agent": "CalendarioScuola-Local/1.0"})
+        timeout=(5, 20), stream=True, headers={"User-Agent": agente})
     try:
         respuesta.raise_for_status()
         partes, total = [], 0
@@ -107,7 +108,7 @@ def noticias(ahora: datetime) -> dict:
     primero = titulares[0]
     dato.update(titulo=primero["titulo"], publicado=primero["fecha"], url=primero["url"],
                 resumen="BioBioChile · Coronel y Región del Biobío. Títulos y enlaces a las publicaciones originales.",
-                detalle="Titulares de la portada regional consultada. Se prioriza Coronel; no se copia el texto completo de los artículos.",
+                detalle="",
                 enlaces=titulares)
     return dato
 

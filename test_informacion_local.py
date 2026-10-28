@@ -67,6 +67,7 @@ def main():
         datos = info.recopilar(AHORA)
     por_tipo = {d['id']: d for d in datos['lecturas']}
     assert por_tipo['noticias']['titulo'] == 'Actividad en Coronel'
+    assert por_tipo['noticias']['detalle'] == '', 'sin explicación del proceso en el detalle de noticias'
     assert '12,4 °C' in por_tipo['clima']['titulo']
     assert 'no alerta oficial' in por_tipo['clima']['resumen']
     assert por_tipo['ruta']['estado'] == 'sinreportes'

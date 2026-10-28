@@ -170,6 +170,7 @@ def main() -> int:
     assert man["display"] == "standalone" and len(man["icons"]) == 3, man
     assert man["start_url"] == "./" and man["theme_color"] == "#008837", man
     sw = (salida / "sw.js").read_text(encoding="utf-8")
+    assert "if (req.cache === 'no-store') return;" in sw, 'respetar lecturas dinámicas sin caché'
     for gancho in ("addEventListener('push'", "addEventListener('notificationclick'",
                    "addEventListener('fetch'"):
         assert gancho in sw, f"sw.js sin {gancho}"
