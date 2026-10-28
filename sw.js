@@ -35,6 +35,8 @@ function guardar(resp) {
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
+  // Las lecturas dinámicas que piden no-store deben ir directo a la red.
+  if (req.cache === 'no-store') return;
   if (new URL(req.url).origin !== self.location.origin) return;
   if (req.mode === 'navigate' || req.url.includes('manifest.webmanifest')) {
     e.respondWith(fetch(req).then(guardar)
