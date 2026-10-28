@@ -106,6 +106,28 @@ def _huella(ruta: Path) -> str:
 
 def publicar(repo: str, forzar: bool) -> str:
     """Sube los archivos cambiados y devuelve la URL pública."""
+    ruta_html = SALIDA / "calendario_evaluaciones.html"
+    if ruta_html.exists():
+        try:
+            from edufacil.noticias_liston import aplicar_noticias_y_liston
+            html_actual = ruta_html.read_text(encoding="utf-8")
+            if 'id="noticias-scuola"' not in html_actual:
+                ruta_html.write_text(aplicar_noticias_y_liston(html_actual), encoding="utf-8")
+                registrar("Noticias Scuola y listón enriquecidos en calendario_evaluaciones.html")
+        except Exception as exc:
+            registrar(f"Aviso al enriquecer calendario_evaluaciones.html: {exc}")
+
+    ruta_html = SALIDA / "calendario_evaluaciones.html"
+    if ruta_html.exists():
+        try:
+            from edufacil.noticias_liston import aplicar_noticias_y_liston
+            html_actual = ruta_html.read_text(encoding="utf-8")
+            if 'id="noticias-scuola"' not in html_actual:
+                ruta_html.write_text(aplicar_noticias_y_liston(html_actual), encoding="utf-8")
+                registrar("Noticias Scuola y listón enriquecidos en calendario_evaluaciones.html")
+        except Exception as exc:
+            registrar(f"Aviso al enriquecer calendario_evaluaciones.html: {exc}")
+
     faltan = [origen for origen, _ in ARCHIVOS if not (SALIDA / origen).exists()]
     if "calendario_evaluaciones.html" in faltan:
         raise RuntimeError("No está salida/calendario_evaluaciones.html: corre `python main.py` primero")

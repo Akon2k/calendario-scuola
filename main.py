@@ -365,6 +365,18 @@ def main() -> int:
                               avisos_clave=clave_avisos,
                               asignaturas=meta.get("asignaturas"),
                               manuales=manuales)
+                try:
+                    from edufacil.noticias_liston import aplicar_noticias_y_liston
+                    texto = ruta.read_text(encoding="utf-8")
+                    ruta.write_text(aplicar_noticias_y_liston(texto), encoding="utf-8")
+                except Exception as exc:
+                    registrar(f"Aviso al enriquecer HTML con noticias/listón: {exc}")
+                try:
+                    from edufacil.noticias_liston import aplicar_noticias_y_liston
+                    texto = ruta.read_text(encoding="utf-8")
+                    ruta.write_text(aplicar_noticias_y_liston(texto), encoding="utf-8")
+                except Exception as exc:
+                    registrar(f"Aviso al enriquecer HTML con noticias/listón: {exc}")
             else:
                 registrar(f"Formato desconocido, se omite: {formato}")
                 continue
