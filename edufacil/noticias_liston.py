@@ -8,7 +8,11 @@ from pathlib import Path
 
 from edufacil.informacion_local import recopilar
 from vista_noticias_scuola import integrar_noticias, recopilar_noticias, recopilar_noticias_nube
+from vista_previa_alertas import CSS as CSS_ALERTA, SCRIPT as SCRIPT_ALERTA
 from vista_previa_liston import AYUDA, CONTROL as CONTROL_LISTON, ESTILO as ESTILO_LISTON, LISTON
+
+# Limpiar las reglas exclusivas de la prueba local (no ocultar botones de PWA/Avisos en producción)
+CSS_LIMPIO = re.sub(r'/\* Exclusivo de la copia local.*?\*/\s*#instalar.*?\n(\.acciones.*?\n)?', '', CSS_ALERTA, flags=re.S)
 
 
 def aplicar_noticias_y_liston(html: str) -> str:
@@ -26,9 +30,11 @@ def aplicar_noticias_y_liston(html: str) -> str:
         liston_html = liston_html.replace('aria-label="Listón local de noticias, tiempo y Ruta 160"',
                                           'aria-label="Listón de noticias, tiempo y Ruta 160"')
         html = html.replace("</header>", "</header>\n" + liston_html, 1)
-        html = html.replace("</style>", ESTILO_LISTON + "\n</style>", 1)
+        # Inyectar tanto la base de la franja (estilos de caja, detalle, etc.) como los estilos del listón
+        html = html.replace("</style>", CSS_LIMPIO + "\n" + ESTILO_LISTON + "\n</style>", 1)
+        # Inyectar el motor base (SCRIPT_ALERTA) y el carrusel del listón (CONTROL_LISTON)
         html = html.replace("</body>", '<script type="application/json" id="franja-datos">'
-                            + datos_json + "</script>\n" + CONTROL_LISTON + "\n</body>", 1)
+                            + datos_json + "</script>\n" + SCRIPT_ALERTA + "\n" + CONTROL_LISTON + "\n</body>", 1)
 
     # 3. Pestaña Noticias Scuola (2026, traducciones, lector y Supabase)
     if 'id="noticias-scuola"' not in html:
