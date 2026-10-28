@@ -130,7 +130,7 @@ de Coronel en la fuente regional, se utiliza la portada nacional de BioBioChile.
 Sólo se muestran titulares fechados y enlazados a publicaciones originales.
 Se seleccionan hasta 10 noticias, sin duplicados y sin inventar publicaciones
 para completar el cupo. Con 10 titulares, el contador tiene 12 elementos:
-tiempo, Ruta 160 y las 10 noticias (96 segundos por vuelta a 8 segundos cada uno).
+tiempo, Ruta 160 y las 10 noticias (60 segundos por vuelta a 5 segundos cada uno).
 
 `sql/liston_publico.sql` crea un único snapshot legible pero no modificable por
 los navegadores. `python actualizar_liston_local.py --publicar` consulta las

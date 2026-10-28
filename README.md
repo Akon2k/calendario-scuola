@@ -168,7 +168,7 @@ funcionan sin problemas.
 ## Listón y noticias publicados
 
 La web incorpora Noticias Scuola de 2026 y el listón **Tiempo → Ruta 160 →
-Noticias**, con cambio cada 8 segundos. Impresión y descarga ICS se muestran
+Noticias**, con cambio cada 5 segundos. Impresión y descarga ICS se muestran
 como iconos con leyenda al pasar el mouse. Se conservan edición, documentos,
 Mensajes, instalación y avisos. Las vistas previas no se publican.
 
@@ -202,7 +202,7 @@ No modifica el calendario publicado ni envía avisos. El ancho de la franja
 se alinea con los 1180 px del calendario y se adapta a pantallas pequeñas.
 Alternativa compacta: `python vista_previa_liston.py` crea
 `salida/vista_previa_liston.html` con las mismas lecturas y conserva la franja
-anterior. Alterna titulares, tiempo y Ruta 160 cada 8 segundos. Pulsar un
+anterior. Alterna titulares, tiempo y Ruta 160 cada 5 segundos. Pulsar un
 titular abre su noticia original de BioBioChile en otra pestaña, sin desplegable
 de noticias. El clima conserva su detalle y Ruta 160 lo muestra sólo cuando
 hay un reporte reciente; sin información no tiene desplegable. Tiene anterior,

@@ -38,7 +38,7 @@ AYUDA = """
         como leído y su contador se oculta. Si aparece otra publicación, vuelve
         a mostrarse. Cada navegador y dispositivo conserva su propio estado.</li>
       <li><strong>Listón Al día.</strong> Muestra primero el tiempo en Coronel,
-        después Ruta 160 y luego las noticias de BioBioChile, cambiando cada 8 segundos. Usa anterior y siguiente para cambiar
+        después Ruta 160 y luego las noticias de BioBioChile, cambiando cada 5 segundos. Usa anterior y siguiente para cambiar
         de información, y pausa para detener o reanudar el cambio automático.
         Se detiene mientras usas el teclado, pasas el mouse por encima, abres
         un detalle o dejas la pestaña oculta.</li>
@@ -327,7 +327,7 @@ CONTROL = r"""
   window.setInterval(function () {
     if (!detenido && detalle.hidden && document.visibilityState !== 'hidden'
         && !caja.matches(':hover') && !caja.querySelector(':focus-visible')) ir(indice + 1);
-  }, 8000);
+  }, 5000);
   function paqueteValido(p) {
     if (!p || !Array.isArray(p.lecturas) || p.lecturas.length !== 3
         || !Number.isFinite(Date.parse(p.consultado)) || Date.parse(p.consultado) > Date.now() + 300000) return false;

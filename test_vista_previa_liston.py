@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from edufacil.informacion_local import CHILE, base
 from publicar import ARCHIVOS
-from vista_previa_liston import crear_liston, generar_liston
+from vista_previa_liston import CONTROL, crear_liston, generar_liston
 from actualizar_liston_local import INTERVALO, actualizar
 
 
@@ -47,7 +47,7 @@ def main():
     assert 'ver.disabled = ver.hidden;' in vista
     assert '<script type="application/json" id="nube">null</script>' in vista
     assert json.loads(re.search(r'id="franja-datos">(.*?)</script>', vista, re.S)[1]) == datos
-    assert 'prefers-reduced-motion: reduce' in vista and '8000' in vista and '9000' not in vista
+    assert 'prefers-reduced-motion: reduce' in vista and '}, 5000);' in CONTROL and '8000' not in CONTROL
     assert "frames = [{tipo: 'clima'}, {tipo: 'ruta'}, {tipo: 'noticias'}];" in vista
     assert '<span id="liston-categoria">Tiempo en Coronel</span>' in vista
     assert ": 'informacion_local.json';" in vista and 'fetch(urlLectura' in vista and '60000' in vista
@@ -59,7 +59,7 @@ def main():
     assert '<ol>' in ayuda and '<svg' not in ayuda and '<img' not in ayuda
     assert '&#' not in ayuda and 'Ayuda antigua' not in ayuda
     assert ayuda.count('<li>') == 10 and 'Supabase' not in ayuda and 'Vista de prueba' not in ayuda
-    assert all(t in ayuda for t in ('Noticias Scuola', 'Contadores de lectura', '8 segundos', '15 minutos', 'Ver detalle', 'Volver'))
+    assert all(t in ayuda for t in ('Noticias Scuola', 'Contadores de lectura', '5 segundos', '15 minutos', 'Ver detalle', 'Volver'))
     assert all('id="liston-' + c + '"' in vista for c in ('anterior', 'pausa', 'siguiente', 'contador'))
     assert not any(a == 'vista_previa_liston.html' for a, _ in ARCHIVOS)
     repetida = crear_liston(vista, datos, [])
