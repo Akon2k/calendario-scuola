@@ -75,7 +75,7 @@ for (const id of ["datos", "ics-b64", "nube", "mes-actual", "rejilla", "detalle"
                   "m-autor", "m-campos", "m-error", "m-cancelar", "m-guardar",
                   "m-adjunto", "m-adjunto-lista", "m-adjunto-archivo",
                   "instalar", "avisos", "probar", "avisos-estado", "avisos-ayuda",
-                  "pestanas", "tab-calendario", "tab-mensajes",
+                  "pestanas", "tab-calendario", "tab-mensajes", "tab-noticias-scuola", "noticias-scuola",
                   "cuenta-mensajes", "vista-calendario", "mensajes",
                   "mensajes-lista", "impresion-mes", "impresion-actividades",
                   "clima", "clima-icono", "clima-temperatura", "clima-ciudad", "clima-ubicacion",
@@ -108,6 +108,7 @@ metaThemeColor.setAttribute("content", "#008837");
 const docEl = new Elem("html");
 
 globalThis.document = {
+  dispatchEvent: () => true,
   documentElement: docEl,
   getElementById: (id) => porId[id],
   createElement: (tag) => new Elem(tag),
@@ -1238,6 +1239,37 @@ const totalTrasError = porId['mensajes-lista'].children.reduce((acc, m) =>
 if (totalTrasError !== 501)
   fallo('un error de red borró los mensajes que ya se habían cargado');
 ok('mensajes: período completo paginado (501), orden estable y sin borrar la vista ante fallos de red');
+
+// La llegada asíncrona de Mensajes no puede reabrir Calendario sobre Noticias.
+errorMensajes = false;
+const apiPestanas = window.__calendario;
+function verificarPestana(nombre) {
+  const nombres = ['calendario', 'mensajes', 'noticias'];
+  if (apiPestanas.pestanaActiva() !== nombre) fallo('la actualización cambió la pestaña activa');
+  for (const n of nombres) {
+    const boton = porId[n === 'noticias' ? 'tab-noticias-scuola' : 'tab-' + n];
+    const panel = porId[n === 'calendario' ? 'vista-calendario' : n === 'noticias' ? 'noticias-scuola' : n];
+    if ((boton.className === 'activa') !== (n === nombre)
+        || (boton.getAttribute('aria-current') === 'page') !== (n === nombre)
+        || panel.hidden !== (n !== nombre)) fallo('pestañas desincronizadas: ' + nombre + ' / ' + n);
+  }
+}
+for (const nombre of ['noticias', 'mensajes', 'calendario']) {
+  porId[nombre === 'noticias' ? 'tab-noticias-scuola' : 'tab-' + nombre].click();
+  verificarPestana(nombre);
+  await apiPestanas.recargarMensajes();
+  await apiPestanas.recargar();
+  verificarPestana(nombre);
+}
+porId['tab-noticias-scuola'].click();
+apiPestanas.mensajes([]);
+verificarPestana('noticias');
+apiPestanas.mensajes(comunicadosSim);
+verificarPestana('noticias');
+porId['tab-mensajes'].click();
+apiPestanas.mensajes([]);
+verificarPestana('calendario');
+ok('tres pestañas: un único resaltado/panel/aria-current; refrescos de mensajes y calendario conservan la selección, incluso sin mensajes');
 
 // Modo oscuro / claro: manda el teléfono; el botón cambia mientras se mira.
 if (porId['tema'].textContent !== '🌙' || docEl.getAttribute('data-tema') !== 'claro')

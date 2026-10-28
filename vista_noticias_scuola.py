@@ -238,8 +238,6 @@ CONTROL = r"""
 <script id="control-noticias-scuola">
 (function () {
   'use strict';
-  var cal = document.getElementById('tab-calendario');
-  var mensajes = document.getElementById('tab-mensajes');
   var noticias = document.getElementById('tab-noticias-scuola');
   var panel = document.getElementById('noticias-scuola');
   var datos = JSON.parse(document.getElementById('scuola-datos').textContent);
@@ -370,31 +368,13 @@ CONTROL = r"""
     } catch (e) { /* conservar la copia y los contadores; nunca borrar por un fallo */ }
     finally { consultando = false; }
   }
-  function estado(activo) {
-    [cal, mensajes, noticias].forEach(function (b) {
-      if (b === activo) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
-    });
+  // El calendario controla las tres pestañas; Noticias sólo sincroniza sus
+  // imágenes y contador. Un refresco de Mensajes ya no cambia la selección.
+  function sincronizarPestana() {
+    if (!panel.hidden) { cargarVisibles(); revisar(); }
+    contador();
   }
-  // Reutilizar las pestañas originales para conservar los contadores de
-  // mensajes y el estado del calendario. No reactivar Supabase.
-  [cal, mensajes].forEach(function (b) {
-    b.addEventListener('click', function () {
-      panel.hidden = true; noticias.classList.remove('activa'); estado(b);
-      history.replaceState(null, '', b === cal ? '#calendario' : '#mensajes');
-      contador();
-    });
-  });
-  noticias.addEventListener('click', function () {
-    cal.click();
-    document.getElementById('vista-calendario').hidden = true;
-    document.getElementById('mensajes').hidden = true;
-    panel.hidden = false;
-    cal.classList.remove('activa'); mensajes.classList.remove('activa');
-    noticias.classList.add('activa'); estado(noticias);
-    history.replaceState(null, '', '#noticias');
-    cargarVisibles();
-    contador(); revisar();
-  });
+  document.addEventListener('calendario-pestana', sincronizarPestana);
   mas.addEventListener('click', function () {
     var ocultas = Array.from(panel.querySelectorAll('.noticia-scuola[hidden]'));
     ocultas.slice(0, 12).forEach(function (n) { n.hidden = false; });
@@ -450,9 +430,7 @@ CONTROL = r"""
   window.addEventListener('storage', function (e) { if (e.key === claveLeidas) { leidasSesion = leidas(); contador(); } });
   document.addEventListener('visibilitychange', function () { if (document.visibilityState !== 'hidden') revisar(); });
   window.setInterval(revisar, 60000);
-  observar(); contador(); atribucion();
-  if (location.hash === '#noticias') noticias.click();
-  else estado(mensajes.classList.contains('activa') ? mensajes : cal);
+  observar(); atribucion(); sincronizarPestana();
   revisar();
 })();
 </script>

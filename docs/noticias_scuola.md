@@ -139,3 +139,8 @@ vista previa. Google permanece desactivado hasta la configuración explícita.
 La regeneración reemplaza los bloques locales anteriores en vez de duplicar
 pestañas, lectores, snapshots o controles del listón. Las pruebas cubren también
 una segunda generación sobre una copia ya integrada, sin modificar la página base.
+
+Las tres pestañas usan un único controlador del calendario. La llegada tardía o
+el refresco de Mensajes no cambia la vista elegida ni deja dos paneles visibles;
+Noticias escucha el cambio para sincronizar únicamente sus imágenes y contador.
+`node test_pagina.mjs` cubre selección, refrescos y la respuesta sin mensajes.

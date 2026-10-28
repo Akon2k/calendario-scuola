@@ -2967,7 +2967,7 @@ _PLANTILLA = r"""<!DOCTYPE html>
     if (!filas.length) {
       document.getElementById('tab-mensajes').hidden = true;
       document.getElementById('cuenta-mensajes').textContent = '0';
-      pestana('calendario');
+      pestana(vistaActiva);
       return;
     }
     var gruposMes = [];
@@ -3322,34 +3322,47 @@ _PLANTILLA = r"""<!DOCTYPE html>
 
   document.getElementById('clima-ubicacion').addEventListener('click', usarUbicacionClima);
 
-  // ---- pestañas: calendario y mensajes ----
+  // ---- pestañas: una única selección para calendario, mensajes y noticias ----
   var vistaActiva = 'calendario';
   function pestana(nombre) {
     var cal = document.getElementById('vista-calendario');
     var men = document.getElementById('mensajes');
     var tcal = document.getElementById('tab-calendario');
     var tmen = document.getElementById('tab-mensajes');
+    var not = document.getElementById('noticias-scuola');
+    var tnot = document.getElementById('tab-noticias-scuola');
     // sin mensajes no hay pestaña de mensajes: se cae al calendario
     if (nombre === 'mensajes' && (!tmen || tmen.hidden)) nombre = 'calendario';
+    if (nombre === 'noticias' && (!not || !tnot)) nombre = 'calendario';
+    if (['calendario', 'mensajes', 'noticias'].indexOf(nombre) < 0) nombre = 'calendario';
     vistaActiva = nombre;
     if (cal) cal.hidden = (nombre !== 'calendario');
     if (men) men.hidden = (nombre !== 'mensajes');
+    if (not) not.hidden = (nombre !== 'noticias');
     if (tcal) tcal.className = (nombre === 'calendario') ? 'activa' : '';
     if (tmen) tmen.className = (nombre === 'mensajes') ? 'activa' : '';
+    if (tnot) tnot.className = (nombre === 'noticias') ? 'activa' : '';
+    [[tcal, 'calendario'], [tmen, 'mensajes'], [tnot, 'noticias']].forEach(function (par) {
+      if (!par[0]) return;
+      if (par[1] === nombre) par[0].setAttribute('aria-current', 'page');
+      else par[0].removeAttribute('aria-current');
+    });
     refrescarCuentaMensajes();
+    document.dispatchEvent(new CustomEvent('calendario-pestana', {detail: {nombre: nombre}}));
   }
 
   function alCambiarPestana(ev) {
     var id = (ev && ev.currentTarget && ev.currentTarget.id) || '';
-    pestana(id === 'tab-mensajes' ? 'mensajes' : 'calendario');
+    pestana(id === 'tab-mensajes' ? 'mensajes' : id === 'tab-noticias-scuola' ? 'noticias' : 'calendario');
+    if (typeof history !== 'undefined' && history.replaceState) history.replaceState(null, '', '#' + vistaActiva);
   }
 
-  ['tab-calendario', 'tab-mensajes'].forEach(function (id) {
+  ['tab-calendario', 'tab-mensajes', 'tab-noticias-scuola'].forEach(function (id) {
     var b = document.getElementById(id);
     if (b) b.addEventListener('click', alCambiarPestana);
   });
-  if (typeof location !== 'undefined'
-      && location.hash === '#mensajes') pestana('mensajes');
+  var inicial = typeof location !== 'undefined' ? location.hash.slice(1) : 'calendario';
+  pestana(inicial);
 
   reconstruir();
   repintar();
@@ -3379,6 +3392,8 @@ _PLANTILLA = r"""<!DOCTYPE html>
     recargarMensajes: cargarMensajes,
     recargarClima: cargarClima,
     recargar: cargarFilas,
+    pestana: pestana,
+    pestanaActiva: function () { return vistaActiva; },
     tema: esTemaOscuroActivo,
     cambiarTema: function (oscuro) {
       temaManual = !!oscuro;
