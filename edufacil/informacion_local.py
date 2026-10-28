@@ -18,6 +18,7 @@ from bs4 import BeautifulSoup
 
 CHILE = ZoneInfo("America/Santiago")
 BIOBIO = "https://www.biobiochile.cl/lista/categorias/region-del-bio-bio"
+BIOBIO_NACIONAL = "https://www.biobiochile.cl/lista/categorias/nacional"
 TRANSITO = "https://biobio.transporteinforma.cl/estado-de-movilidad/"
 AJAX_TRANSITO = "https://biobio.transporteinforma.cl/wp-admin/admin-ajax.php"
 METEO = "https://api.open-meteo.com/v1/forecast"
@@ -77,11 +78,12 @@ def base(tipo: str, ahora: datetime) -> dict:
             "vigencia_segundos": {"ruta": 3600, "clima": 10800, "noticias": 86400}[tipo]}
 
 
-def parsear_noticias(html: str, ahora: datetime) -> list[dict]:
+def parsear_noticias(html: str, ahora: datetime, *, nacional: bool = False) -> list[dict]:
     sopa = BeautifulSoup(html, "html.parser")
     noticias, vistos = [], set()
     for bloque in sopa.select(".article-text-container"):
-        a = bloque.find("a", href=lambda h: h and "/noticias/nacional/region-del-bio-bio/" in h)
+        prefijo = "/noticias/nacional/" if nacional else "/noticias/nacional/region-del-bio-bio/"
+        a = bloque.find("a", href=lambda h: h and prefijo in h)
         fecha = bloque.select_one(".article-date-hour")
         if not a or not fecha:
             continue
@@ -100,14 +102,23 @@ def parsear_noticias(html: str, ahora: datetime) -> list[dict]:
 def noticias(ahora: datetime) -> dict:
     dato = base("noticias", ahora)
     titulares = parsear_noticias(descargar(BIOBIO), ahora)
+    resumen = "BioBioChile · Coronel y Región del Biobío. Títulos y enlaces a las publicaciones originales."
+    alcance = "regionales"
+    if not any("coronel" in n["titulo"].lower() for n in titulares):
+        # Si la fuente regional no aporta un titular reciente de Coronel,
+        # rotar noticias verificadas de todo Chile, sin repetir datos antiguos.
+        dato["url"] = BIOBIO_NACIONAL
+        alcance = "nacionales"
+        resumen = "BioBioChile · Noticias de Chile. Títulos y enlaces a las publicaciones originales."
+        titulares = parsear_noticias(descargar(BIOBIO_NACIONAL), ahora, nacional=True)
     if not titulares:
-        dato.update(estado="sinreportes", titulo="Sin titulares regionales recientes verificados",
+        dato.update(estado="sinreportes", titulo="Sin titulares " + alcance + " recientes verificados",
                     resumen="La portada consultada no entregó titulares recientes con fecha verificable.",
                     detalle="Consulta BioBioChile para revisar otras publicaciones. No se muestran titulares inventados.")
         return dato
     primero = titulares[0]
     dato.update(titulo=primero["titulo"], publicado=primero["fecha"], url=primero["url"],
-                resumen="BioBioChile · Coronel y Región del Biobío. Títulos y enlaces a las publicaciones originales.",
+                resumen=resumen,
                 detalle="",
                 enlaces=titulares)
     return dato

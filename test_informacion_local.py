@@ -41,6 +41,32 @@ METEO = {'utc_offset_seconds': -10800,
 def main():
     titulares = info.parsear_noticias(HTML_NOTICIAS, AHORA)
     assert [n['titulo'] for n in titulares] == ['Actividad en Coronel', 'Noticias regionales']
+    regional = noticia('Actualidad del Biobío', 'Martes 27 Octubre, 2026 | 20:00', URL + 'regional.shtml')
+    nacional = (
+        noticia('Noticias de Santiago', 'Martes 27 Octubre, 2026 | 20:30',
+                'https://www.biobiochile.cl/noticias/nacional/region-metropolitana/2026/10/27/santiago.shtml')
+        + noticia('Noticias de Coquimbo', 'Martes 27 Octubre, 2026 | 20:00',
+                'https://www.biobiochile.cl/noticias/nacional/region-de-coquimbo/2026/10/27/coquimbo.shtml')
+        + noticia('No incluir internacionales', 'Martes 27 Octubre, 2026 | 20:45',
+                'https://www.biobiochile.cl/noticias/internacional/2026/10/27/internacional.shtml')
+        + noticia('No incluir futuro', 'Miércoles 28 Octubre, 2026 | 20:00',
+                'https://www.biobiochile.cl/noticias/nacional/chile/2026/10/28/futuro.shtml')
+        + noticia('No incluir enlace ajeno', 'Martes 27 Octubre, 2026 | 20:00',
+                'https://evil.example/noticias/nacional/2026/10/27/falsa.shtml')
+    )
+    for fuente_regional in (regional, '', noticia('Coronel antigua', 'Lunes 01 Junio, 2026 | 12:00', URL + 'antigua.shtml')):
+        with patch.object(info, 'descargar', side_effect=[fuente_regional, nacional]) as descarga:
+            respaldo = info.noticias(AHORA)
+        assert [c.args[0] for c in descarga.call_args_list] == [info.BIOBIO, info.BIOBIO_NACIONAL]
+        assert [n['titulo'] for n in respaldo['enlaces']] == ['Noticias de Santiago', 'Noticias de Coquimbo']
+        assert respaldo['estado'] == 'ok' and 'Noticias de Chile' in respaldo['resumen']
+    with patch.object(info, 'descargar', return_value=HTML_NOTICIAS) as descarga:
+        local = info.noticias(AHORA)
+    assert descarga.call_count == 1 and local['titulo'] == 'Actividad en Coronel'
+    with patch.object(info, 'descargar', side_effect=[regional, '']):
+        sin_nacionales = info.noticias(AHORA)
+    assert sin_nacionales['estado'] == 'sinreportes' and sin_nacionales['enlaces'] == []
+    assert sin_nacionales['url'] == info.BIOBIO_NACIONAL
     assert info.fecha_es('23 de octubre de 2026').day == 23
     assert info.fecha_es('31 de febrero de 2026') is None
     assert not info.enlace_valido('https://www.biobiochile.cl.evil.example/', 'www.biobiochile.cl')

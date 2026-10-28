@@ -188,7 +188,8 @@ Google está preparado pero **desactivado**, sin credencial configurada.
 
 Vista **sólo local** de una franja de Ruta 160, meteorología y
 noticias: `python vista_previa_alertas.py` crea `salida/vista_previa_alertas.html`.
-Consulta títulos de BioBioChile (prioriza Coronel), tiempo de Open-Meteo para
+Consulta títulos de BioBioChile (prioriza Coronel; sin titulares recientes de
+Coronel usa noticias nacionales de todo Chile), tiempo de Open-Meteo para
 Coronel y la lista pública de Transporte Informa Biobío. Muestra fuente,
 fecha y hora de consulta, no titulares de ejemplo. La ausencia de reportes
 viales recientes no se presenta como ruta despejada. Si una fuente falla o
