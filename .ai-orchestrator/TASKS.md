@@ -4,7 +4,7 @@ Las tareas antiguas de ProyectoPrueba no pertenecen a este proyecto. Se conserv�
 su copia en el respaldo privado de configuración antes de sustituir este tablero.
 
 - [COMPLETADO] CFG-001: Configurar y validar Orchestrator y sus especialistas para este proyecto, sin llamadas a modelos ni cambios en la aplicación.
-- [COMPLETADO] UI-001: Vista simple/completa con preferencia por navegador. Ajustada para conservar visible el logo de la Scuola, el reloj/hora, la barra del mes y las pestañas (Calendario, Mensajes y Noticias Scuola), ocultando el ruido visual (listón externo, pronóstico/temperatura y botones secundarios). Verificado con pruebas unitarias y DOM simulado en verde. Sincronizado avance rápido con origin/main.
+- [COMPLETADO] UI-001: Vista simple/completa con preferencia por navegador. Ajustada para conservar visible el logo de la Scuola, el reloj/hora, la barra del mes y las pestañas (Calendario, Mensajes y Noticias Scuola), ocultando el ruido visual (listón externo, pronóstico/temperatura y botones secundarios). Verificado con pruebas unitarias y DOM simulado en verde. Código comiteado, pusheado y publicado en producción en GitHub Pages.
 - [PENDIENTE] REV-001: Auditoría de sólo lectura: datos, calendario, interfaz/PWA, noticias, seguridad, publicación y continuidad del actualizador. Iniciar sólo cuando el usuario pida la revisión.
 - [PENDIENTE] REV-002: Consolidar hallazgos de REV-001 por severidad, con archivo/línea, evidencia, reproducción, impacto y propuesta de corrección.
 - [PENDIENTE] FIX-001: Acordar con el usuario qué correcciones implementar; no ejecutar automáticamente.
