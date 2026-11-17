@@ -99,6 +99,15 @@ _PLANTILLA = r"""<!DOCTYPE html>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Calendario Scuola">
+<script id="vista-fouc">
+  (function () {
+    var vista = 'completa';
+    try {
+      if (window.localStorage.getItem('edufacil-vista') === 'simple') vista = 'simple';
+    } catch (e) { /* Sin almacenamiento también se puede cambiar de vista. */ }
+    document.documentElement.setAttribute('data-vista', vista);
+  })();
+</script>
 <script id="tema-fouc">
   (function () {
     // El modo lo manda el teléfono: se lee en cada carga. Si una versión
@@ -359,6 +368,37 @@ _PLANTILLA = r"""<!DOCTYPE html>
   button:disabled { cursor: wait; opacity: .7; }
   #tema { font-size: 15px; padding: 7px 11px; display: inline-flex; align-items: center; justify-content: center; }
   #mes-actual { font-weight: 600; min-width: 132px; text-align: center; }
+  #cambiar-vista { min-height: 44px; font-size: 12px; margin-left: auto; }
+  @media screen {
+    html[data-vista="simple"] header { padding: 14px 0 6px; }
+    html[data-vista="simple"] #franja-local,
+    html[data-vista="simple"] #clima-ubicacion,
+    html[data-vista="simple"] #clima .actual,
+    html[data-vista="simple"] #clima-pronostico,
+    html[data-vista="simple"] .acciones > :not(#anterior):not(#mes-actual):not(#siguiente):not(#hoy):not(#cambiar-vista) {
+      display: none !important;
+    }
+    html[data-vista="simple"] #clima {
+      background: transparent;
+      border: none;
+      padding: 0;
+      margin: 0;
+      width: auto;
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+    }
+    html[data-vista="simple"] #clima .hora {
+      border-right: none;
+      padding: 0;
+      height: auto;
+    }
+  }
+  @media screen and (max-width: 640px) {
+    html[data-vista="simple"] header { align-items: center; }
+    html[data-vista="simple"] .marca { flex: 1 1 auto; flex-basis: auto; }
+    html[data-vista="simple"] #clima { flex: 0 0 auto; width: auto; margin: 0; }
+  }
   #vistas { max-width: 1180px; margin: 12px auto 0; position: relative; }
   main {
     max-width: 1180px; margin: 0 auto;
@@ -755,6 +795,8 @@ _PLANTILLA = r"""<!DOCTYPE html>
     <span id="mes-actual"></span>
     <button id="siguiente" title="Mes siguiente">&#8250;</button>
     <button id="hoy">Hoy</button>
+    <button id="cambiar-vista" type="button" aria-expanded="true"
+            title="Ocultar el encabezado, el listón y los botones secundarios en este navegador">Vista simple</button>
     <button id="tema" type="button" title="Cambiar a modo oscuro" aria-label="Cambiar tema">🌙</button>
     <button id="imprimir">Imprimir</button>
     <button id="nuevo" class="primario">&#65291; Nuevo evento</button>
@@ -769,6 +811,34 @@ _PLANTILLA = r"""<!DOCTYPE html>
     <span id="nube-estado" class="nube" title="Correcciones comunitarias"></span>
   </div>
 </header>
+
+<script id="control-vista">
+(function () {
+  'use strict';
+  var raiz = document.documentElement;
+  var boton = document.getElementById('cambiar-vista');
+  function mostrar(vista) {
+    var simple = vista === 'simple';
+    raiz.setAttribute('data-vista', simple ? 'simple' : 'completa');
+    boton.textContent = simple ? 'Vista completa' : 'Vista simple';
+    boton.setAttribute('aria-expanded', String(!simple));
+    boton.title = simple ? 'Mostrar el encabezado, el listón y todos los botones'
+      : 'Ocultar el encabezado, el listón y los botones secundarios en este navegador';
+  }
+  boton.addEventListener('click', function () {
+    var vista = raiz.getAttribute('data-vista') === 'simple' ? 'completa' : 'simple';
+    mostrar(vista);
+    try { window.localStorage.setItem('edufacil-vista', vista); } catch (e) {}
+  });
+  // Otras pestañas del mismo navegador comparten la preferencia; otros teléfonos no.
+  window.addEventListener('storage', function (e) {
+    if (e.key === 'edufacil-vista' || e.key === null) {
+      mostrar(e.newValue === 'simple' ? 'simple' : 'completa');
+    }
+  });
+  mostrar(raiz.getAttribute('data-vista'));
+})();
+</script>
 
 <nav id="pestanas">
   <button id="tab-calendario" class="activa"><svg class="icono" aria-hidden="true"
@@ -841,7 +911,11 @@ _PLANTILLA = r"""<!DOCTYPE html>
   <ul>
     <li><strong>Ver el calendario:</strong> cambia de mes con <em>&#8249; &#8250;</em>,
       <em>Hoy</em> vuelve al día de hoy, <em>Imprimir</em> da una copia del mes
-      con sus actividades listadas debajo (sólo en la impresión).</li>
+      con sus actividades listadas debajo (sólo en la impresión).
+      <em>Vista simple</em> oculta el listón, el tiempo y los botones secundarios,
+      conservando el logo, la hora, las pestañas y el calendario;
+      <em>Vista completa</em> los recupera. La elección se recuerda en este navegador,
+      también en el teléfono, sin cambiar la vista ni los avisos de otras personas.</li>
     <li><strong>Un día:</strong> toca cualquier fecha y se abren sus evaluaciones,
       cada dato en su propia línea (prueba, profesor, número, sub-número si
       la hay, y coeficiente).</li>

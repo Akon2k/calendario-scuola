@@ -1,0 +1,30 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "orchestrator",
+  "providers": {
+    "openrouter": {
+      "models": {
+        "orchestrator-free": {
+          "modelID": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "name": "Orchestrator Free"
+        }
+      }
+    },
+    "opencode": {
+      "models": {
+        "coder-free": {
+          "modelID": "deepseek-v4.1-flash-free",
+          "name": "Coder Free (DeepSeek)"
+        },
+        "debugger-free": {
+          "modelID": "deepseek-v4.1-flash-free",
+          "name": "Debugger Free (DeepSeek)"
+        },
+        "reviewer-free": {
+          "modelID": "glm-5.3-flash-free",
+          "name": "Reviewer Free (GLM)"
+        }
+      }
+    }
+  }
+}

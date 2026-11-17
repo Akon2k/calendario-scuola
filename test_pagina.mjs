@@ -251,6 +251,20 @@ globalThis.fetch = async (url, opts = {}) => {
 const js = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
   .map(m => m[1]).find(s => s.includes("var D = JSON.parse(document.getElementById('datos').textContent)"));
 if (!js) throw new Error('No se encontró el motor del calendario');
+const RealDate = globalThis.Date;
+class MockDate extends RealDate {
+  constructor(...args) {
+    if (args.length === 0) {
+      super('2026-10-20T12:00:00');
+    } else {
+      super(...args);
+    }
+  }
+  static now() {
+    return new MockDate().getTime();
+  }
+}
+globalThis.Date = MockDate;
 eval(js);
 await new Promise((r) => setTimeout(r, 30));   // la carga de la nube es async
 

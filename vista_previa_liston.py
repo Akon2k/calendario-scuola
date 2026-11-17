@@ -23,7 +23,10 @@ AYUDA = """
       <li><strong>Calendario.</strong> Usa anterior y siguiente para cambiar de mes.
         Hoy vuelve a la fecha actual. Selecciona un día para ver sus evaluaciones,
         actividades, profesor, contenido y documentos disponibles. Los sábados
-        muestran el resumen de la semana siguiente.</li>
+        muestran el resumen de la semana siguiente. Vista simple oculta el listón,
+        el tiempo y los botones secundarios, conservando el logo, la hora, las pestañas
+        y el calendario; Vista completa los recupera. Cada
+        navegador recuerda su elección, también en el teléfono, sin desactivar los avisos.</li>
       <li><strong>Mensajes.</strong> Revisa los comunicados del colegio agrupados por mes.
         Abre el mes que quieras consultar. El número de la pestaña indica los
         mensajes que todavía no has leído en este dispositivo.</li>
@@ -325,7 +328,8 @@ CONTROL = r"""
   // No mover el contenido mientras se lee, se usa el teclado o la pestaña no
   // está visible. Sin animación de desplazamiento; movimiento reducido pausa.
   window.setInterval(function () {
-    if (!detenido && detalle.hidden && document.visibilityState !== 'hidden'
+    if (!detenido && document.documentElement.getAttribute('data-vista') !== 'simple'
+        && detalle.hidden && document.visibilityState !== 'hidden'
         && !caja.matches(':hover') && !caja.querySelector(':focus-visible')) ir(indice + 1);
   }, 5000);
   function paqueteValido(p) {
